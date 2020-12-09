@@ -5,6 +5,10 @@ import json
 
 import base64
 
+# TOGGLE DEBUG LOGGING
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 from garminconnect import (
@@ -35,6 +39,12 @@ config = json.load(f)
 
 mutex = threading.Lock()
 
+import requests
+from urllib3.exceptions import InsecureRequestWarning
+
+# Suppress only the single warning from urllib3 needed.
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -53,8 +63,10 @@ class web_server_thread(threading.Thread):
 
 class activity_monitor_thread(threading.Thread):
     def toggle_network(self, denyallow, mac):
-        netgear = Netgear(password=base64.b64decode(config['router']['password']).decode('utf-8'))
-        
+        netgear = Netgear(
+            password=base64.b64decode(config['router']['password']).decode('utf-8'),
+            user=config['router']['user'])
+            
         print('Toggling Network {} to {}'.format(mac, denyallow))
         netgear.allow_block_device(mac_addr=mac, device_status=denyallow)
 
@@ -97,7 +109,6 @@ class activity_monitor_thread(threading.Thread):
 
         value = 0
         try:
-            print("\nstats\n========\n")
             stats = client.get_stats(today.isoformat())
             value = stats[stat]
         except (
@@ -179,10 +190,7 @@ class activity_monitor_thread(threading.Thread):
         events = self.get_active_events()
         found_mac = []
         for event in events:
-            print('valid event found!')
-            print(event)
             parts = str.split(event, ';')
-            print(parts)
             if len(parts) == 3:
                 self.process_command(parts[0], parts[1], parts[2], garmin_client)
                 found_mac.append(parts[2])
@@ -229,13 +237,13 @@ class activity_monitor_thread(threading.Thread):
         global mutex
         global DISABLED_DEVICES
 
-        garmin_client = self.init_client()
+        garmin_client = 0
+        # garmin_client = self.init_client()
         while True:
-            print('Checking activity...')
             self.check_activity(garmin_client)
 
-            print('Sleep 15 minutes (because Garmin Connect...)')
-            time.sleep(900)
+            print('Sleep {} seconds (because Garmin Connect...)'.format(config['refresh_time_sec']))
+            time.sleep(config['refresh_time_sec'])
 
 def main():
     #t1 = web_server_thread()

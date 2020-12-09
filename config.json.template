@@ -4,8 +4,9 @@
         "password" : "<base64 Encoded Garming Connect Password>"
     },
     "router": {
-        "user": "admin",
+        "user": "<router username>",
         "password": "<base64 Encoded Nighthawk Router Password>"
     },
-    "calendar_id": "<Google Calendar ID to Use>"
+    "calendar_id": "<Google Calendar ID to Use>",
+    "refresh_time_sec": <Seconds (int) to sleep for each cycle check.  10m (600) is a decent value to avoid getting rate limited by garmin>
 }
