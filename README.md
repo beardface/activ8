@@ -1,13 +1,13 @@
 # 2FAt.club
 This repository allows you to disable network access to any devices if you don't meet an activity goal for a time period.
 
-For example, if you wanted to turn off your internet to your Desktop or Mobile unless you've gotten a certain number of steps for the day... this will do that for you.
+For example, if you **wanted to turn off your internet to your Desktop or Mobile unless you've gotten a certain number of steps for the day...** this will do that for you.
 
-Want to require a certain number of high activity (running / cycling / rowing)? Done.
+**Want to require a certain number of high activity (running / cycling / rowing)?** Done.
 
-Want to reach a certain maximum heartbeat to turn on access to the internet? You got it.
+**Want to reach a certain maximum heartbeat to turn on access to the internet?** You got it.
 
-Staying up too late and want your device's internet to shut off per a scheduled calendar event? Yep.
+**Staying up too late and want your device's internet to shut off per a scheduled calendar event?** Yep.
 
 ## How does it work?
 This works by integrating with Garmin Connect to get your activity, and your nighthawk router to remotely control devices by MAC address.
