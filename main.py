@@ -113,10 +113,10 @@ class activity_monitor_thread(threading.Thread):
         
         if value >= int(required_value):
             print('Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, mac))
-        #    self.toggle_network('Allow', mac)
+            self.toggle_network('Allow', mac)
         else:
             print('Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({})!'.format(stat, value, required_value, mac))
-        #    self.toggle_network('Block', mac)
+            self.toggle_network('Block', mac)
 
     def time_in_range(self, start, end, time):
         if end < start:
@@ -254,5 +254,5 @@ if __name__ == '__main__':
 # [ ok ] Set up Web Service to show which devices are enabled / disabled
 # [ ok ] Set up persistent cron to check/allow/block devices
 # [ ok ] If a device is blocked, and there is no event, allow the device (memory)
+# [ ok ] BONUS: Support CALORIES
 # [ ] Find somewhere to run this persistently (Raspberry Pi?)
-# [ ] BONUS: Support CALORIES
