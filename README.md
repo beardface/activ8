@@ -3,6 +3,12 @@ This repository allows you to disable network access to any devices if you don't
 
 For example, if you wanted to turn off your internet to your Desktop or Mobile unless you've gotten a certain number of steps for the day... this will do that for you.
 
+Want to require a certain number of high activity (running / cycling / rowing)? Done.
+
+Want to reach a certain maximum heartbeat to turn on access to the internet? You got it.
+
+Staying up too late and want your device's internet to shut off per a scheduled calendar event? Yep.
+
 ## How does it work?
 This works by integrating with Garmin Connect to get your activity, and your nighthawk router to remotely control devices by MAC address.
 
@@ -12,10 +18,10 @@ To set up time periods for device control, you create a Google Calendar and add 
 The syntax for control on the calendar is:
 `<COMMAND>;<PARAM>;<MAC ADDRESS>`
 
-Supported Commands:
-* TOGGLE - This will take a param of `Allow` or `Block` to turn on or off internet access during a time period to devices
-* STEPS - This command takes a parameter (int) of the number of steps required for the day to avoid disabling internet access.
-* STATS - This provides the ability to pull from additional Garmin Connect Stats to gate connectivity:
+**Supported Commands:**
+* `TOGGLE` - This will take a param of `Allow` or `Block` to turn on or off internet access during a time period to devices
+* `STEPS` - This command takes a parameter (int) of the number of steps required for the day to avoid disabling internet access.
+* `STATS` - This provides the ability to pull from additional Garmin Connect Stats to gate connectivity:
 Format <stat>=<value> (`ex. totalKilocalories=1000` would require a totalKilocalories (burnt calories) greater than 1000 to enable a device)
 
 | Statistic | Description | Type |
