@@ -92,6 +92,32 @@ class activity_monitor_thread(threading.Thread):
             print('Oh No! Youve only taken {} steps, which is less than the required {}! Disabling your device ({})!'.format(all_steps, required_steps, mac))
             self.toggle_network('Block', mac)
 
+    def validate_stats(self, client, stat, required_value, mac):
+        today = date.today()
+
+        value = 0
+        try:
+            print("\nstats\n========\n")
+            stats = client.get_stats(today.isoformat())
+            value = stats[stat]
+        except (
+            GarminConnectConnectionError,
+            GarminConnectAuthenticationError,
+            GarminConnectTooManyRequestsError,
+        ) as err:
+            print("Error occurred during Garmin Connect Client get steps data: %s" % err)
+            return
+        except Exception:  # pylint: disable=broad-except
+            print("Unknown error occurred during Garmin Connect Client get steps data")
+            return
+        
+        if value >= int(required_value):
+            print('Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, mac))
+        #    self.toggle_network('Allow', mac)
+        else:
+            print('Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({})!'.format(stat, value, required_value, mac))
+        #    self.toggle_network('Block', mac)
+
     def time_in_range(self, start, end, time):
         if end < start:
             return time >= start or time <= end
@@ -141,7 +167,13 @@ class activity_monitor_thread(threading.Thread):
         if command == "TOGGLE":
             self.toggle_network(param, mac)
         elif command == "STEPS":
-            self.validate_steps(garmin_client, param, mac, )
+            self.validate_steps(garmin_client, param, mac)
+        elif command == "STATS":
+            parts = str.split(param, '=')
+            if len(parts) == 2:
+                self.validate_stats(garmin_client, parts[0], int(parts[1]), mac)
+            else:
+                print("ERROR, Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
 
     def check_activity(self, garmin_client):
         events = self.get_active_events()
