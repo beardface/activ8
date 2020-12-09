@@ -276,12 +276,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# TODO:
-# [ ok ] Read all parameters from config.json
-# [ ok ] Simple (dumb) encryption of passwords
-# [ ok ] Set up Web Service to show which devices are enabled / disabled
-# [ ok ] Set up persistent cron to check/allow/block devices
-# [ ok ] If a device is blocked, and there is no event, allow the device (memory)
-# [ ok ] BONUS: Support CALORIES
-# [ ] Find somewhere to run this persistently (Raspberry Pi?)
