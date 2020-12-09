@@ -18,6 +18,8 @@ To set up time periods for device control, you create a Google Calendar and add 
 The syntax for control on the calendar is:
 `<COMMAND>;<PARAM>;<MAC ADDRESS>`
 
+![Calendar](https://github.com/beardface/2FAt.club/blob/main/2FAt_Calendar.png?raw=true)
+
 **Supported Commands:**
 * `TOGGLE` - This will take a param of `Allow` or `Block` to turn on or off internet access during a time period to devices
 * `STEPS` - This command takes a parameter (int) of the number of steps required for the day to avoid disabling internet access.
@@ -44,3 +46,5 @@ You'll also need to place a `credentials.json` file in the folder that enables y
 
 ## Twilio
 You can add a twilio account to configuration to get a text message when your device is being disabled due to failing your fitness goals.
+
+<img src="https://github.com/beardface/2FAt.club/blob/main/twilio.jpg?raw=true" width="300">
