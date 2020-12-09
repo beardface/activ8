@@ -62,7 +62,7 @@ class activity_monitor_thread(threading.Thread):
         if denyallow == "Block" and mac not in DISABLED_DEVICES:
             DISABLED_DEVICES.append(mac)
         
-        if denyallow == "Allow":
+        if denyallow == "Allow" and mac in DISABLED_DEVICES:
             DISABLED_DEVICES.remove(mac)
         mutex.release()
 
