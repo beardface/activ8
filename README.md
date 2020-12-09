@@ -8,8 +8,6 @@ This works by integrating with Garmin Connect to get your activity, and your nig
 
 To set up time periods for device control, you create a Google Calendar and add events that correlate with control of those devices.
 
-![calendar](https://github.com/beardface/2FAt.club/blob/main/calendar.png?raw=true)
-
 ## Syntax for Control on Google Calendar
 The syntax for control on the calendar is:
 `<COMMAND>;<PARAM>;<MAC ADDRESS>`
