@@ -2,7 +2,7 @@ from __future__ import print_function
 from pynetgear import Netgear
 import urllib3
 import json
-
+import os
 import base64
 
 # TOGGLE DEBUG LOGGING
@@ -28,6 +28,8 @@ from datetime import date, datetime, timezone
 
 import threading, time
 
+from twilio.rest import Client
+
 mutex = threading.Lock()
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
@@ -36,6 +38,8 @@ DISABLED_DEVICES = []
 
 f = open('config.json',) 
 config = json.load(f) 
+
+twilioClient = Client(config['twilio']['account_sid'], config['twilio']['auth_token'])
 
 mutex = threading.Lock()
 
@@ -62,7 +66,7 @@ class web_server_thread(threading.Thread):
         httpd.serve_forever()
 
 class activity_monitor_thread(threading.Thread):
-    def toggle_network(self, denyallow, mac):
+    def toggle_network(self, denyallow, mac, message):
         netgear = Netgear(
             password=base64.b64decode(config['router']['password']).decode('utf-8'),
             user=config['router']['user'])
@@ -72,6 +76,13 @@ class activity_monitor_thread(threading.Thread):
 
         mutex.acquire()
         if denyallow == "Block" and mac not in DISABLED_DEVICES:
+            if message != '' and config['twilio']['number'] != '':
+                twilioClient.messages.create(
+                    from_=config['twilio']['number'],
+                    to=config['twilio']['notify'],
+                    body=message
+                )
+
             DISABLED_DEVICES.append(mac)
         
         if denyallow == "Allow" and mac in DISABLED_DEVICES:
@@ -98,11 +109,13 @@ class activity_monitor_thread(threading.Thread):
             return
         
         if all_steps >= int(required_steps):
-            print('Youve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, mac))
-            self.toggle_network('Allow', mac)
+            msg = 'Youve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, mac)
+            print(msg)
+            self.toggle_network('Allow', mac, msg)
         else:
-            print('Oh No! Youve only taken {} steps, which is less than the required {}! Disabling your device ({})!'.format(all_steps, required_steps, mac))
-            self.toggle_network('Block', mac)
+            msg = 'Oh No! Youve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, mac)
+            print(msg)
+            self.toggle_network('Block', mac, msg)
 
     def validate_stats(self, client, stat, required_value, mac):
         today = date.today()
@@ -123,11 +136,13 @@ class activity_monitor_thread(threading.Thread):
             return
         
         if value >= int(required_value):
-            print('Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, mac))
-            self.toggle_network('Allow', mac)
+            msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, mac)
+            print(msg)
+            self.toggle_network('Allow', mac, msg)
         else:
-            print('Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({})!'.format(stat, value, required_value, mac))
-            self.toggle_network('Block', mac)
+            msg = 'Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({}) until you take care of business!!'.format(stat, value, required_value, mac)
+            print(msg)
+            self.toggle_network('Block', mac, msg)
 
     def time_in_range(self, start, end, time):
         if end < start:
@@ -176,7 +191,7 @@ class activity_monitor_thread(threading.Thread):
         print('Handling {} ({}) for {}'.format(command, param, mac))
 
         if command == "TOGGLE":
-            self.toggle_network(param, mac)
+            self.toggle_network(param, mac, "")
         elif command == "STEPS":
             self.validate_steps(garmin_client, param, mac)
         elif command == "STATS":
@@ -202,7 +217,7 @@ class activity_monitor_thread(threading.Thread):
         # Enable any expired disablements
         for d in devices:
             if d not in found_mac:
-                self.toggle_network('Allow', d)
+                self.toggle_network('Allow', d, '')
         
     def init_client(self):
         try:
@@ -237,8 +252,7 @@ class activity_monitor_thread(threading.Thread):
         global mutex
         global DISABLED_DEVICES
 
-        garmin_client = 0
-        # garmin_client = self.init_client()
+        garmin_client = self.init_client()
         while True:
             self.check_activity(garmin_client)
 

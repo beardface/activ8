@@ -35,3 +35,6 @@ Format <stat>=<value> (`ex. totalKilocalories=1000` would require a totalKilocal
 To configure this repository, you need to create a `config.json` file that has the credentials for the router and your garmin connect account, as well as the google calendar ID.  (See `config.json.template`)
 
 You'll also need to place a `credentials.json` file in the folder that enables you to connect to the Google Calendar API. [here](https://developers.google.com/calendar/quickstart/go)
+
+## Twilio
+You can add a twilio account to configuration to get a text message when your device is being disabled due to failing your fitness goals.

@@ -7,6 +7,12 @@
         "user": "<router username>",
         "password": "<base64 Encoded Nighthawk Router Password>"
     },
+    "twilio" : {
+        "notify" : "<+12345678> (Phone number to text)",
+        "number" : "<+12345678> (Twilio account phone number)",
+        "auth_token" : "<Twilio Auth Token>",
+        "account_sid" : "<Twilio Account SID>"
+    },
     "calendar_id": "<Google Calendar ID to Use>",
     "refresh_time_sec": <Seconds (int) to sleep for each cycle check.  10m (600) is a decent value to avoid getting rate limited by garmin>
 }
