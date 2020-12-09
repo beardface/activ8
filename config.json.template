@@ -1,0 +1,11 @@
+{
+    "garmin_account" : {
+        "email" : "<Your Email for Garmin Connect>",
+        "password" : "<base64 Encoded Garming Connect Password>"
+    },
+    "router": {
+        "user": "admin",
+        "password": "<base64 Encoded Nighthawk Router Password>"
+    },
+    "calendar_id": "<Google Calendar ID to Use>"
+}
