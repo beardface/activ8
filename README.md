@@ -28,8 +28,7 @@ Format <stat>=<value> (`ex. totalKilocalories=1000` would require a totalKilocal
 | highlyActiveSeconds |  Portion of the monitoring period (in seconds) in which the device wearer was considered Highly Active. This relies on heuristics internal to each device. | int |
 | activeSeconds | Portion of the monitoring period (in seconds) in which the device wearer was considered Active. This relies on heuristics internal to each device. | int |
 | moderateIntensityMinutes | Cumulative duration of activities of moderate intensity, lasting at least 600 seconds at a time. Moderate intensity is defined as activity with MET (resting metabolic rate) value range 3-6 | int |
-| vigorousIntensityMinutes | Cumulative duration of activities of vigorous intensity, lasting at least 600 seconds at a time. Vigorous intensity is defined as activity with MET (resting metabolic rate) value
-> 6 | int |
+| vigorousIntensityMinutes | Cumulative duration of activities of vigorous intensity, lasting at least 600 seconds at a time. Vigorous intensity is defined as activity with MET (resting metabolic rate) value > 6 | int |
 | maxHeartRate | Maximum of heart rate values captured during the monitoring period, in beats per minute | int |
 
 ## Configuration
