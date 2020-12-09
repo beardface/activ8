@@ -86,6 +86,13 @@ class activity_monitor_thread(threading.Thread):
             DISABLED_DEVICES.append(mac)
         
         if denyallow == "Allow" and mac in DISABLED_DEVICES:
+            if message != '' and config['twilio']['number'] != '':
+                twilioClient.messages.create(
+                    from_=config['twilio']['number'],
+                    to=config['twilio']['notify'],
+                    body='Hooray!  {}'.format(message)
+                )
+
             DISABLED_DEVICES.remove(mac)
         mutex.release()
 
