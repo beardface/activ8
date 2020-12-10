@@ -14,5 +14,21 @@
         "account_sid" : "<Twilio Account SID>"
     },
     "calendar_id": "<Google Calendar ID to Use>",
-    "refresh_time_sec": <Seconds (int) to sleep for each cycle check.  10m (600) is a decent value to avoid getting rate limited by garmin>
+    "refresh_time_sec": <Seconds (int) to sleep for each cycle check.  10m (600) is a decent value to avoid getting rate limited by garmin>,
+    "device_groups": [
+        {
+            "name" : "<Device Group Name>",
+            "devices": [
+                "MAC:ADDRESS:GOES:HERE"
+            ],
+            "notify" : "<+12345678> (Phone number to text)"
+        },
+        {
+            "name" : "<Device Group Name>",
+            "devices": [
+                "MAC:ADDRESS:GOES:HERE"
+            ],
+            "notify" : "<+12345678> (Phone number to text)"
+        }
+    ]
 }

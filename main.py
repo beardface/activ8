@@ -71,15 +71,24 @@ class activity_monitor_thread(threading.Thread):
             password=base64.b64decode(config['router']['password']).decode('utf-8'),
             user=config['router']['user'])
             
+        notify_phone_number = config['twilio']['notify']
+
         print('Toggling Network {} to {}'.format(mac, denyallow))
-        netgear.allow_block_device(mac_addr=mac, device_status=denyallow)
+        if self.is_mac_address(mac):
+            netgear.allow_block_device(mac_addr=mac, device_status=denyallow)
+        else:
+            for group in config['device_groups']:
+                if group['name'] == mac:
+                    for device in group['devices']:
+                        netgear.allow_block_device(mac_addr=device, device_status=denyallow)
+                    notify_phone_number = group['notify']
 
         mutex.acquire()
         if denyallow == "Block" and mac not in DISABLED_DEVICES:
             if message != '' and config['twilio']['number'] != '':
                 twilioClient.messages.create(
                     from_=config['twilio']['number'],
-                    to=config['twilio']['notify'],
+                    to=notify_phone_number,
                     body=message
                 )
 
@@ -89,7 +98,7 @@ class activity_monitor_thread(threading.Thread):
             if message != '' and config['twilio']['number'] != '':
                 twilioClient.messages.create(
                     from_=config['twilio']['number'],
-                    to=config['twilio']['notify'],
+                    to=notify_phone_number,
                     body='Hooray!  {}'.format(message)
                 )
 
@@ -116,11 +125,11 @@ class activity_monitor_thread(threading.Thread):
             return
         
         if all_steps >= int(required_steps):
-            msg = 'Youve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, mac)
+            msg = 'You\'ve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, mac)
             print(msg)
             self.toggle_network('Allow', mac, msg)
         else:
-            msg = 'Oh No! Youve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, mac)
+            msg = 'Oh No! You\'ve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, mac)
             print(msg)
             self.toggle_network('Block', mac, msg)
 
@@ -207,6 +216,12 @@ class activity_monitor_thread(threading.Thread):
                 self.validate_stats(garmin_client, parts[0], int(parts[1]), mac)
             else:
                 print("ERROR, Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
+
+    def is_mac_address(self, name):
+        if len(str.split(name, ':')) == 6:
+            return True
+        else:
+            return False
 
     def check_activity(self, garmin_client):
         events = self.get_active_events()
