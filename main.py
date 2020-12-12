@@ -39,7 +39,7 @@ import pymongo
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 class MongoConfigDB:
-    def update_profile(self, profile_name, devices, notify_phone_number):
+    def update_profile(self, profile_name, devices, notify_phone_number, garmin_username, garmin_password, google_calendar_id):
         profile_query = {"name": profile_name}
         
         if "profiles" in self.db.list_collection_names():
@@ -50,12 +50,23 @@ class MongoConfigDB:
             profile_data = {
                 "name": profile_name,
                 "devices": devices,
-                "notify_phone_number": notify_phone_number
+                "notify_phone_number": notify_phone_number,
+                "google_calendar_id": google_calendar_id,
+                "garmin_username": garmin_username,
+                "garmin_password": base64.b64encode(garmin_password.encode('ascii'))
             }
             profiles_col.insert_one(profile_data)
         else:
             profiles_col = self.db["profiles"]
             profiles_col.insert_one(profile_query)
+
+    def get_profiles(self):
+        profiles = []
+        if "profiles" in self.db.list_collection_names():
+            for profile in self.db["profiles"].find({}):
+                profiles.append(profile)
+
+        return profiles
 
     def get_profile(self, profile_name):
         profile_query = {"name": profile_name}
@@ -106,74 +117,15 @@ class MongoConfigDB:
 
         return None
 
-    def set_google_calendar(self, calendar_id):
-        if "google_calendar" in self.db.list_collection_names():
-            googleCalendar = self.db["google_calendar"]
-            googleCalendar.drop()
-
-        googleCalendar = self.db["google_calendar"]
-        googleCalendar.insert_one({
-            "calendar_id": calendar_id
-        })
-
-    def get_google_calendar(self):
-        if "google_calendar" in self.db.list_collection_names():
-            googleCalendar = self.db["google_calendar"].find_one({})
-            if "calendar_id" in googleCalendar:
-                return googleCalendar["calendar_id"]
-
-        return ""
-
-    def set_twilio_account(self, notify_phone_number, twilio_number, twilio_sid, twilio_auth_token):
-        if "twilio_account" in self.db.list_collection_names():
-            twilioAccount = self.db["twilio_account"]
-            twilioAccount.drop()
-
-        twilioAccount = self.db["twilio_account"]
-        twilioAccount.insert_one({
-            "notify_phone_number": twilio_number,
-            "twilio_number": twilio_number,
-            "twilio_sid": base64.b64encode(twilio_sid.encode('ascii')),
-            "twilio_auth_token": base64.b64encode(twilio_auth_token.encode('ascii'))
-        })
-
     def get_twilio_account(self):
         if "twilio_account" in self.db.list_collection_names():
             return self.db["twilio_account"].find_one({})
         
         return None
 
-    def set_router_account(self, username, password):
-        if "router_account" in self.db.list_collection_names():
-            routerAccount = self.db["router_account"]
-            routerAccount.drop()
-
-        routerAccount = self.db["router_account"]
-        routerAccount.insert_one({
-            "user": username,
-            "password": base64.b64encode(password.encode('ascii'))
-        })
-
     def get_router_account(self):
         if "router_account" in self.db.list_collection_names():
             return self.db["router_account"].find_one({})
-
-        return None
-
-    def set_garmin_account(self, username, password):
-        if "garmin_account" in self.db.list_collection_names():
-            garminAccount = self.db["garmin_account"]
-            garminAccount.drop()
-
-        garminAccount = self.db["garmin_account"]
-        garminAccount.insert_one({
-            "email": username,
-            "password": base64.b64encode(password.encode('ascii'))
-        })
-
-    def get_garmin_account(self):
-        if "garmin_account" in self.db.list_collection_names():
-            return self.db["garmin_account"].find_one({})
 
         return None
 
@@ -185,66 +137,58 @@ mongoConfig = MongoConfigDB()
 mongoConfig.init()
 
 class activity_monitor():
-    def toggle_network(self, denyallow, mac, message):
-        twilioConfig = mongoConfig.get_twilio_account()
-        routerConfig = mongoConfig.get_router_account()
+    def toggle_network(self, denyallow, profile, message):
+        common_config = mongoConfig.get_common_config()
 
-        if routerConfig == None:
+        if "router_username" not in common_config or "router_password" not in common_config:
             print("[ERROR] No valid router configuration provided! Can't toggle network.")
             return
 
         netgear = Netgear(
-            password=base64.b64decode(routerConfig['password']).decode('utf-8'),
-            user=routerConfig['user'])
+            password=base64.b64decode(common_config['router_password']).decode('utf-8'),
+            user=common_config['router_username'])
         
         notify_phone_number = ''
-        if 'notify_phone_number' in twilioConfig:
-            notify_phone_number = twilioConfig['notify_phone_number']
+        if 'notify_phone_number' in profile:
+            notify_phone_number = profile['notify_phone_number']
 
-        print('Toggling Network {} to {}'.format(mac, denyallow))
-        if self.is_mac_address(mac):
-            netgear.allow_block_device(mac_addr=mac, device_status=denyallow)
+        print('Toggling Network {} to {}'.format(profile["name"], denyallow))
+        if profile != None:
+            if "devices" in profile:
+                for device in profile['devices']:
+                    netgear.allow_block_device(mac_addr=device, device_status=denyallow)
         else:
-            profile = mongoConfig.get_profile(mac)
-            if profile != None:
-                if "devices" in profile:
-                    for device in profile['devices']:
-                        netgear.allow_block_device(mac_addr=device, device_status=denyallow)
-
-                        if "notify_phone_number" in profile:
-                            notify_phone_number = profile['notify_phone_number']
-            else:
-                print("[ERROR] No matching profile for {}, can't toggle devices!".format(mac))
-                return
+            print("[ERROR] No profile provided, can't toggle devices!")
+            return
 
         disabled_devices = mongoConfig.get_all_disabled_devices()
-        if denyallow == "Block" and mac not in disabled_devices:
-            if message != '' and twilioConfig['twilio_number']:
-                if 'account_sid' in twilioConfig:
-                    twilioClient = Client(base64.b64decode(twilioConfig['account_sid']), base64.b64decode(twilioConfig['auth_token']))
-
+        if denyallow == "Block" and profile["name"] not in disabled_devices:
+            if message != '' and common_config['twilio_number']:
+                if 'twilio_sid' in common_config:
+                    twilioClient = Client(base64.b64decode(common_config['twilio_sid']).decode("utf-8"), base64.b64decode(common_config['twilio_auth_token']).decode("utf-8"))
                     twilioClient.messages.create(
-                        from_=twilioConfig['twilio_number'],
+                        from_=common_config['twilio_number'],
                         to=notify_phone_number,
                         body=message
                     )
 
-            mongoConfig.insert_disabled_device(mac)
+            mongoConfig.insert_disabled_device(profile["name"])
         
-        if denyallow == "Allow" and mac in disabled_devices:
-            if message != '' and twilioConfig['twilio_number']:
+        if denyallow == "Allow" and profile["name"] in disabled_devices:
+            if message != '' and common_config['twilio_number']:
+                twilioClient = Client(base64.b64decode(common_config['twilio_sid']).decode("utf-8"), base64.b64decode(common_config['twilio_auth_token']).decode("utf-8"))
                 twilioClient.messages.create(
-                    from_=twilioConfig['twilio_number'],
+                    from_=common_config['twilio_number'],
                     to=notify_phone_number,
                     body='Hooray!  {}'.format(message)
                 )
 
-            mongoConfig.remove_disabled_device(mac)
+            mongoConfig.remove_disabled_device(profile["name"])
 
-    def validate_steps(self, required_steps, mac):
+    def validate_steps(self, required_steps, profile):
         today = date.today()
 
-        client = self.init_garmin_client()
+        client = self.init_garmin_client(profile)
         if client == None:
             print("[ERROR] Unable to validate steps, no Garmin Client available!")
             return
@@ -266,18 +210,18 @@ class activity_monitor():
             return
         
         if all_steps >= int(required_steps):
-            msg = 'You\'ve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, mac)
+            msg = 'You\'ve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, profile["name"])
             print(msg)
-            self.toggle_network('Allow', mac, msg)
+            self.toggle_network('Allow', profile, msg)
         else:
-            msg = 'Oh No! You\'ve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, mac)
+            msg = 'Oh No! You\'ve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, profile["name"])
             print(msg)
-            self.toggle_network('Block', mac, msg)
+            self.toggle_network('Block', profile, msg)
 
-    def validate_stats(self, stat, required_value, mac):
+    def validate_stats(self, stat, required_value, profile):
         today = date.today()
 
-        client = self.init_garmin_client()
+        client = self.init_garmin_client(profile)
         if client == None:
             print("[ERROR] Unable to validate steps, no Garmin Client available!")
             return
@@ -298,20 +242,20 @@ class activity_monitor():
             return
         
         if value >= int(required_value):
-            msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, mac)
+            msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, profile["name"])
             print(msg)
-            self.toggle_network('Allow', mac, msg)
+            self.toggle_network('Allow', profile, msg)
         else:
-            msg = 'Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({}) until you take care of business!!'.format(stat, value, required_value, mac)
+            msg = 'Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({}) until you take care of business!!'.format(stat, value, required_value, profile["name"])
             print(msg)
-            self.toggle_network('Block', mac, msg)
+            self.toggle_network('Block', profile, msg)
 
     def time_in_range(self, start, end, time):
         if end < start:
             return time >= start or time <= end
         return start <= time <= end
 
-    def get_active_events(self):
+    def get_active_events(self, profile):
         creds = None
         if os.path.exists('token.pickle'):
             with open('token.pickle', 'rb') as token:
@@ -330,13 +274,12 @@ class activity_monitor():
 
         service = build('calendar', 'v3', credentials=creds)
 
-        calendar_id = mongoConfig.get_google_calendar()
-        if calendar_id == "":
-            print("[ERROR] No valid Google Calendar ID, can't get schedule!")
+        if "google_calendar_id" not in profile:
+            print("[ERROR] No valid Google Calendar ID for profile, can't get schedule!")
             return []
 
         now = datetime.utcnow().isoformat() + 'Z'
-        events_result = service.events().list(calendarId=calendar_id, timeMin=now,
+        events_result = service.events().list(calendarId=profile["google_calendar_id"], timeMin=now,
                                             maxResults=10, singleEvents=True,
                                             orderBy='startTime').execute()
         events = events_result.get('items', [])
@@ -354,17 +297,17 @@ class activity_monitor():
             
         return valid_events
         
-    def process_command(self, command, param, mac):
-        print('Handling {} ({}) for {}'.format(command, param, mac))
+    def process_command(self, command, param, profile):
+        print('Handling {} ({}) for {}'.format(command, param, profile["name"]))
 
         if command == "TOGGLE":
-            self.toggle_network(param, mac, "")
+            self.toggle_network(param, profile, "")
         elif command == "STEPS":
-            self.validate_steps(param, mac)
+            self.validate_steps(param, profile)
         elif command == "STATS":
             parts = str.split(param, '=')
             if len(parts) == 2:
-                self.validate_stats(parts[0], int(parts[1]), mac)
+                self.validate_stats(parts[0], int(parts[1]), profile)
             else:
                 print("[ERROR] Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
 
@@ -374,30 +317,24 @@ class activity_monitor():
         else:
             return False
 
-    def check_activity(self):
-        events = self.get_active_events()
-        found_mac = []
+    def check_activity(self, profile):
+        events = self.get_active_events(profile)
+        block_found = False
         for event in events:
             parts = str.split(event, ';')
-            if len(parts) == 3:
-                self.process_command(parts[0], parts[1], parts[2])
-                found_mac.append(parts[2])
+            if len(parts) == 2:
+                self.process_command(parts[0], parts[1], profile)
+                block_found = True
         
-        disabled_devices = mongoConfig.get_all_disabled_devices()
-
-        # Enable any expired disablements
-        for d in disabled_devices:
-            if d not in found_mac:
-                self.toggle_network('Allow', d, '')
+        return block_found
         
-    def init_garmin_client(self):
-        garminAccount = mongoConfig.get_garmin_account()
-        if garminAccount == None:
+    def init_garmin_client(self, profile):
+        if "garmin_username" not in profile or "garmin_password" not in profile:
             print("[ERROR] No valid Garmin Account configured! Can't get Activity.")
             return None
 
         try:
-            client = Garmin(garminAccount['email'], base64.b64decode(garminAccount['password']))
+            client = Garmin(profile['garmin_username'], base64.b64decode(profile['garmin_password']))
         except (
             GarminConnectConnectionError,
             GarminConnectAuthenticationError,
@@ -425,14 +362,11 @@ class activity_monitor():
         return client
 
     def run(self):
-        mongoConfig.update_profile("Justin", [
-                "DC:44:27:1D:2C:A2"
-            ],
-            "+13149568019"
-        )
-        
         while True:
-            self.check_activity()
+            found_disabled_profiles = []
+            for profile in mongoConfig.get_profiles():
+                if self.check_activity(profile):
+                    found_disabled_profiles.append(profile)
 
             refresh = 600
             common = mongoConfig.get_common_config()
@@ -442,6 +376,13 @@ class activity_monitor():
 
             print('Sleep {} seconds before next check...'.format(refresh))
             time.sleep(refresh)
+
+            disabled_devices = mongoConfig.get_all_disabled_devices()
+
+            # Enable any expired disablements
+            for d in disabled_devices:
+                if d not in found_disabled_profiles:
+                    self.toggle_network('Allow', mongoConfig.get_profile(d), '')
 
 def main():
     monitor_task = activity_monitor()
