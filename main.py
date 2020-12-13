@@ -375,7 +375,7 @@ class activity_monitor():
                     refresh = common['refresh_time_sec']
 
             print('Sleep {} seconds before next check...'.format(refresh))
-            time.sleep(refresh)
+            time.sleep(int(refresh))
 
             disabled_devices = mongoConfig.get_all_disabled_devices()
 

@@ -12,16 +12,25 @@
     <h2> Garmin Account</h2>
   
     <% profiles.forEach((profile) => { %>
-    <form action="/profile_save" method="POST">
-      Profile Name: <input type="text" placeholder="name" name="name" value="<%= profile.name %>"><br />
-      Google Calendar ID: <input type="text" placeholder="google_calendar_id" name="google_calendar_id" value="<%= profile.google_calendar_id %>"><br />
+      <hr />
+    <form action="/profile_save/<%= profile.name %>" method="POST">
+      Profile Name: <input type="text" placeholder="name" name="name" value="<%= (profile.name)?profile.name:'' %>"><br />
+      Google Calendar ID: <input type="text" placeholder="google_calendar_id" name="google_calendar_id" value="<%= (profile.google_calendar_id)?profile.google_calendar_id:'' %>"><br />
       <br />
-      Garmin Username (email): <input type="text" placeholder="garmin_username" name="garmin_username" value="<%= profile.garmin_username %>"><br />
-      Garmin Password: <input type="password" placeholder="garmin_password" name="garmin_password"  value="<%= profile.garmin_password %>"><br />
+      Garmin Username (email): <input type="text" placeholder="garmin_username" name="garmin_username" value="<%= (profile.garmin_username)?profile.garmin_username:'' %>"><br />
+      Garmin Password: <input type="password" placeholder="garmin_password" name="garmin_password"  value="<%= (profile.garmin_password)?profile.garmin_password:'' %>"><br />
       <button type="submit">Submit</button>
     </form>
     <br />
+    <form action="/profile_delete/<%= profile.name %>" method="POST">
+      <button type="submit">Delete</button>
+    </form>
+    <hr />
+    <br />
     <br />
     <% }) %>
+    <form action="/profile_new" method="POST">
+      <button type="submit">Create new Profile</button>
+    </form>
   </body>
 </html>
