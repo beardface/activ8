@@ -16,6 +16,8 @@
     <form action="/profile_save/<%= profile.name %>" method="POST">
       Profile Name: <input type="text" placeholder="name" name="name" value="<%= (profile.name)?profile.name:'' %>"><br />
       Google Calendar ID: <input type="text" placeholder="google_calendar_id" name="google_calendar_id" value="<%= (profile.google_calendar_id)?profile.google_calendar_id:'' %>"><br />
+      <br />      
+      Phone Number: <input type="text" placeholder="notify_phone_number" name="notify_phone_number" value="<%= (profile.google_calendar_id)?profile.notify_phone_number:'' %>"><br />
       <br />
       Garmin Username (email): <input type="text" placeholder="garmin_username" name="garmin_username" value="<%= (profile.garmin_username)?profile.garmin_username:'' %>"><br />
       Garmin Password: <input type="password" placeholder="garmin_password" name="garmin_password"  value="<%= (profile.garmin_password)?profile.garmin_password:'' %>"><br />
