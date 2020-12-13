@@ -1,0 +1,24 @@
+<!-- index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>2FAt</title>
+  </head>
+
+  <body>
+    <h1> 2FAt Configuration</h1>
+    
+    <form action="/config_save" method="POST">
+      Router Username: <input type="text" placeholder="user" name="router_username"  value="<%= config.router_username %>"> <br />
+      Router Password: <input type="password" placeholder="password" name="router_password" value="<%= config.router_password %>"><br />
+      <br/>
+      Twilio Phone Number: <input type="text" placeholder="+13141234567" name="twilio_phone_number" value="<%= config.twilio_number %>"><br/>
+      Twilio SID: <input type="password" placeholder="twilio_sid" name="twilio_sid"  value="<%= config.twilio_sid %>"><br/>
+      Twilio Auth Token: <input type="password" placeholder="twilio_auth_token" name="twilio_auth_token"  value="<%= config.twilio_auth_token %>"><br/>
+      <br/>
+      Refresh Time Seconds: <input type="text" placeholder="+13141234567" name="refresh_time_sec" value="<%= config.refresh_time_sec %>">
+      <button type="submit">Submit</button>
+    </form>
+  </body>
+</html>

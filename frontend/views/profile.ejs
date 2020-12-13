@@ -1,0 +1,27 @@
+<!-- index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>2FAt</title>
+  </head>
+
+  <body>
+    <h1> 2FAt Adminstration</h1>
+  
+    <h2> Garmin Account</h2>
+  
+    <% profiles.forEach((profile) => { %>
+    <form action="/profile_save" method="POST">
+      Profile Name: <input type="text" placeholder="name" name="name" value="<%= profile.name %>"><br />
+      Google Calendar ID: <input type="text" placeholder="google_calendar_id" name="google_calendar_id" value="<%= profile.google_calendar_id %>"><br />
+      <br />
+      Garmin Username (email): <input type="text" placeholder="garmin_username" name="garmin_username" value="<%= profile.garmin_username %>"><br />
+      Garmin Password: <input type="password" placeholder="garmin_password" name="garmin_password"  value="<%= profile.garmin_password %>"><br />
+      <button type="submit">Submit</button>
+    </form>
+    <br />
+    <br />
+    <% }) %>
+  </body>
+</html>
