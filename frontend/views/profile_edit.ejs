@@ -1,0 +1,58 @@
+<!-- index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <%- include('common/head'); %>
+  </head>
+
+  <body class="container">
+    <header>
+        <%- include('common/header'); %>
+    </header>
+  
+    <hr />
+    <form action="/profile_save/<%= profile.name %>" method="POST">
+      <table>
+        <tr>
+          <td>Profile Name:</td><td><input type="text" placeholder="name" name="name" value="<%= (profile.name)?profile.name:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Google Calendar ID:</td><td><input type="text" placeholder="google_calendar_id" name="google_calendar_id" value="<%= (profile.google_calendar_id)?profile.google_calendar_id:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Phone Number:</td><td><input type="text" placeholder="notify_phone_number" name="notify_phone_number" value="<%= (profile.google_calendar_id)?profile.notify_phone_number:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Garmin Username (email):</td><td><input type="text" placeholder="garmin_username" name="garmin_username" value="<%= (profile.garmin_username)?profile.garmin_username:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Garmin Password:</td><td><input type="password" placeholder="garmin_password" name="garmin_password"  value="<%= (profile.garmin_password)?profile.garmin_password:'' %>"></td>
+        </tr>
+      </table>
+
+      <br />
+      <b>Devices:</b>
+      <br />
+      <% devices.forEach((device) => { %>
+        <input <%= (device.checked)?'checked':'' %> type="checkbox" id="<%= device.mac %>" name="<%= device.mac %>">
+        <label for="<%= device.name %> (<%= device.mac %>)"><%= device.name %> (<%= device.mac %>): <%= device.ip %></label><br>
+      <% }) %>
+      <br />
+      <button type="submit">Save</button>
+    </form>
+    <br />
+    <form action="/profile_delete/<%= profile.name %>" method="POST">
+      <button type="submit">Delete</button>
+    </form>
+    <hr />
+    <br />
+    <br />
+    <form action="/" method="GET">
+      <button type="submit">Back</button>
+    </form>
+
+    <footer>
+      <%- include('common/footer'); %>
+    </footer>
+  </body>
+</html>

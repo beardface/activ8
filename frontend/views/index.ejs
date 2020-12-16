@@ -1,0 +1,47 @@
+<!-- index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <%- include('common/head'); %>
+  </head>
+
+  <body class="container">
+    <header>
+        <%- include('common/header'); %>
+    </header>
+  
+    <table>
+      <tr><td><h2>Profiles</h2></td><td>
+        <form action="/profile_new" method="POST">
+        <button type="submit">+</button>
+      </form></td></tr>
+    </table>
+  
+    <% profiles.forEach((profile) => { %>
+      <hr />
+        <b>Name:</b> <%= (profile.name)?profile.name:'' %><br />
+        <b>Steps:</b> <%= (profile.steps)?profile.steps:'' %><br /><br />
+        <iframe src="https://calendar.google.com/calendar/embed?src=<%= (profile.google_calendar_id)?profile.google_calendar_id:'' %>&ctz=America%2FChicago&mode=WEEK" style="border: 0" width="700" height="300" frameborder="0" scrolling="no"></iframe><br />
+        <br />
+        <b>Blocked:</b>  <%= (profile.blocked) %><br />
+        <b>Last Checked:</b> <%= (profile.last_checked_time)?profile.last_checked_time:'' %><br />
+
+        <form action="/profile_edit/<%= (profile.name)?profile.name:'' %>" method="GET">
+          <button type="submit">Edit</button>
+        </form>
+        <hr />
+    <br />
+    <% }) %>
+    
+    <!-- <h2>Devices</h2>
+    <% devices.forEach((device) => { %>
+      <hr />
+        <b>Name:</b> <%= (device.name)?device.name:'' %> (<%= (device.mac)?device.mac:'' %>) <br />
+        <b>IP:</b> <%= (device.ip)?device.ip:'' %>
+    <% }) %>
+     -->
+    <footer>
+      <%- include('common/footer'); %>
+    </footer>
+  </body>
+</html>

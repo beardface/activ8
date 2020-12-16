@@ -22,7 +22,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 
 import time
 
@@ -33,115 +33,55 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
-import pymongo
+import mongo_client
+import faunadb_client
 
 # Suppress only the single warning from urllib3 needed.
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
-class MongoConfigDB:
-    def update_profile(self, profile_name, devices, notify_phone_number, garmin_username, garmin_password, google_calendar_id):
-        profile_query = {"name": profile_name}
-        
-        if "profiles" in self.db.list_collection_names():
-            profiles_col = self.db["profiles"]
-
-            profiles_col.delete_one(profile_query)
-
-            profile_data = {
-                "name": profile_name,
-                "devices": devices,
-                "notify_phone_number": notify_phone_number,
-                "google_calendar_id": google_calendar_id,
-                "garmin_username": garmin_username,
-                "garmin_password": base64.b64encode(garmin_password.encode('ascii'))
-            }
-            profiles_col.insert_one(profile_data)
-        else:
-            profiles_col = self.db["profiles"]
-            profiles_col.insert_one(profile_query)
-
-    def get_profiles(self):
-        profiles = []
-        if "profiles" in self.db.list_collection_names():
-            for profile in self.db["profiles"].find({}):
-                profiles.append(profile)
-
-        return profiles
-
-    def get_profile(self, profile_name):
-        profile_query = {"name": profile_name}
-        if "profiles" in self.db.list_collection_names():
-            profile = self.db["profiles"].find_one(profile_query)
-            return profile
-        
-        return None
-
-    def insert_disabled_device(self, device):
-        device_query = {"name" : device}
-
-        if "disabled_devices" in self.db.list_collection_names():
-            disabled_devices_col = self.db["disabled_devices"]
-
-            if disabled_devices_col.find_one(device_query) == None:
-                disabled_devices_col.insert_one(device_query)
-        else:
-            disabled_devices_col = self.db["disabled_devices"]
-            disabled_devices_col.insert_one(device_query)
-
-    def remove_disabled_device(self, device):
-        if "disabled_devices" in self.db.list_collection_names():
-            disabled_devices_col = self.db["disabled_devices"]
-            device_query = {"name" : device}
-
-            disabled_devices_col.delete_one(device_query)
-
-    def get_all_disabled_devices(self):
-        response = []
-        if "disabled_devices" in self.db.list_collection_names():
-            for d in self.db["disabled_devices"].find({}):
-                response.append(d["name"])
-            
-        return response
-
-    def set_common_config(self, common_config):
-        if "config" in self.db.list_collection_names():
-            commonConfig = self.db["config"]
-            commonConfig.drop()
-
-        commonConfig = self.db["config"]
-        commonConfig.insert_one(common_config)
-
-    def get_common_config(self):
-        if "config" in self.db.list_collection_names():
-            return self.db["config"].find_one({})
-
-        return None
-
-    def get_twilio_account(self):
-        if "twilio_account" in self.db.list_collection_names():
-            return self.db["twilio_account"].find_one({})
-        
-        return None
-
-    def get_router_account(self):
-        if "router_account" in self.db.list_collection_names():
-            return self.db["router_account"].find_one({})
-
-        return None
-
-    def init(self):
-        self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
-        self.db = self.mongo_client["2FAt"]
-
-mongoConfig = MongoConfigDB()
-mongoConfig.init()
+# database = faunadb_client.FaunaDBConfig()
+# database.init()
+database = mongo_client.MongoConfigDB()
+database.init()
 
 class activity_monitor():
-    def toggle_network(self, denyallow, profile, message):
-        common_config = mongoConfig.get_common_config()
+    def debug(self, message):
+        print(message)
+        database.debug_log(message)
+
+    def refresh_all_devices(self):
+        common_config = database.get_common_config()
 
         if "router_username" not in common_config or "router_password" not in common_config:
-            print("[ERROR] No valid router configuration provided! Can't toggle network.")
+            self.debug("[ERROR] No valid router configuration provided! Can't toggle network.")
+            return
+
+        netgear = Netgear(
+            password=base64.b64decode(common_config['router_password']).decode('utf-8'),
+            user=common_config['router_username'])
+        
+        cached_devices = []
+        devices = netgear.get_attached_devices()
+        if devices != None:
+            self.debug("[INFO] Successfully connected to router, found {} attached devices.".format(len(devices)))
+            for device in devices:
+                d = {
+                    "name": device.name,
+                    "ip": device.ip,
+                    "mac": device.mac,
+                    "type": device.type,
+                }
+                cached_devices.append(d)
+            database.update_all_devices(cached_devices)
+        else:
+            self.debug("[ERROR] Unable to get devices from the router, check credentials!")
+
+
+    def toggle_network(self, denyallow, profile, message):
+        common_config = database.get_common_config()
+
+        if "router_username" not in common_config or "router_password" not in common_config:
+            self.debug("[ERROR] No valid router configuration provided! Can't toggle network.")
             return
 
         netgear = Netgear(
@@ -152,16 +92,16 @@ class activity_monitor():
         if 'notify_phone_number' in profile:
             notify_phone_number = profile['notify_phone_number']
 
-        print('Toggling Network {} to {}'.format(profile["name"], denyallow))
+        self.debug('[INFO] Toggling Network {} to {}'.format(profile["name"], denyallow))
         if profile != None:
             if "devices" in profile:
                 for device in profile['devices']:
                     netgear.allow_block_device(mac_addr=device, device_status=denyallow)
         else:
-            print("[ERROR] No profile provided, can't toggle devices!")
+            self.debug("[ERROR] No profile provided, can't toggle devices!")
             return
 
-        disabled_devices = mongoConfig.get_all_disabled_devices()
+        disabled_devices = database.get_all_disabled_devices()
         if denyallow == "Block" and profile["name"] not in disabled_devices:
             if message != '' and common_config['twilio_number']:
                 if 'twilio_sid' in common_config:
@@ -172,7 +112,7 @@ class activity_monitor():
                         body=message
                     )
 
-            mongoConfig.insert_disabled_device(profile["name"])
+            database.insert_disabled_device(profile["name"])
         
         if denyallow == "Allow" and profile["name"] in disabled_devices:
             if message != '' and common_config['twilio_number']:
@@ -183,14 +123,14 @@ class activity_monitor():
                     body='Hooray!  {}'.format(message)
                 )
 
-            mongoConfig.remove_disabled_device(profile["name"])
+            database.remove_disabled_device(profile["name"])
 
     def validate_steps(self, required_steps, profile):
         today = date.today()
 
         client = self.init_garmin_client(profile)
         if client == None:
-            print("[ERROR] Unable to validate steps, no Garmin Client available!")
+            self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
             return
 
         all_steps = 0
@@ -203,19 +143,20 @@ class activity_monitor():
             GarminConnectAuthenticationError,
             GarminConnectTooManyRequestsError,
         ) as err:
-            print("Error occurred during Garmin Connect Client get steps data: %s" % err)
+            self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
             return
         except Exception:  # pylint: disable=broad-except
-            print("Unknown error occurred during Garmin Connect Client get steps data")
+            self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
             return
         
+        database.update_profile_steps(profile["name"], all_steps)
         if all_steps >= int(required_steps):
             msg = 'You\'ve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, profile["name"])
-            print(msg)
+            self.debug('[INFO] Sending: {}'.format(msg))
             self.toggle_network('Allow', profile, msg)
         else:
             msg = 'Oh No! You\'ve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, profile["name"])
-            print(msg)
+            self.debug('[INFO] Sending: {}'.format(msg))
             self.toggle_network('Block', profile, msg)
 
     def validate_stats(self, stat, required_value, profile):
@@ -223,7 +164,7 @@ class activity_monitor():
 
         client = self.init_garmin_client(profile)
         if client == None:
-            print("[ERROR] Unable to validate steps, no Garmin Client available!")
+            self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
             return
 
         value = 0
@@ -235,19 +176,19 @@ class activity_monitor():
             GarminConnectAuthenticationError,
             GarminConnectTooManyRequestsError,
         ) as err:
-            print("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
+            self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
             return
         except Exception:  # pylint: disable=broad-except
-            print("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
+            self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
             return
         
         if value >= int(required_value):
             msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, profile["name"])
-            print(msg)
+            self.debug('[INFO] Sending: {}'.format(msg))
             self.toggle_network('Allow', profile, msg)
         else:
             msg = 'Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({}) until you take care of business!!'.format(stat, value, required_value, profile["name"])
-            print(msg)
+            self.debug('[INFO] Sending: {}'.format(msg))
             self.toggle_network('Block', profile, msg)
 
     def time_in_range(self, start, end, time):
@@ -275,7 +216,7 @@ class activity_monitor():
         service = build('calendar', 'v3', credentials=creds)
 
         if "google_calendar_id" not in profile:
-            print("[ERROR] No valid Google Calendar ID for profile, can't get schedule!")
+            self.debug("[ERROR] No valid Google Calendar ID for profile, can't get schedule!")
             return []
 
         now = datetime.utcnow().isoformat() + 'Z'
@@ -309,7 +250,7 @@ class activity_monitor():
             if len(parts) == 2:
                 self.validate_stats(parts[0], int(parts[1]), profile)
             else:
-                print("[ERROR] Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
+                self.debug("[ERROR] Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
 
     def is_mac_address(self, name):
         if len(str.split(name, ':')) == 6:
@@ -326,11 +267,12 @@ class activity_monitor():
                 self.process_command(parts[0], parts[1], profile)
                 block_found = True
         
+        database.update_profile_stats(profile["name"], block_found, datetime.now())
         return block_found
         
     def init_garmin_client(self, profile):
         if "garmin_username" not in profile or "garmin_password" not in profile:
-            print("[ERROR] No valid Garmin Account configured! Can't get Activity.")
+            self.debug("[ERROR] No valid Garmin Account configured! Can't get Activity.")
             return None
 
         try:
@@ -340,10 +282,10 @@ class activity_monitor():
             GarminConnectAuthenticationError,
             GarminConnectTooManyRequestsError,
         ) as err:
-            print("[ERROR] During Garmin Connect Client init: %s" % err)
+            self.debug("[ERROR] During Garmin Connect Client init: %s" % err)
             return None
         except Exception:  # pylint: disable=broad-except
-            print("[ERROR] Unknown error occurred during Garmin Connect Client init")
+            self.debug("[ERROR] Unknown error occurred during Garmin Connect Client init")
             return None
 
         try:
@@ -353,36 +295,53 @@ class activity_monitor():
             GarminConnectAuthenticationError,
             GarminConnectTooManyRequestsError,
         ) as err:
-            print("[ERROR] Error occurred during Garmin Connect Client login: %s" % err)
+            self.debug("[ERROR] Error occurred during Garmin Connect Client login: %s" % err)
             return None
         except Exception:  # pylint: disable=broad-except
-            print("[ERROR] Unknown error occurred during Garmin Connect Client login")
+            self.debug("[ERROR] Unknown error occurred during Garmin Connect Client login")
             return None
 
         return client
 
     def run(self):
         while True:
-            found_disabled_profiles = []
-            for profile in mongoConfig.get_profiles():
-                if self.check_activity(profile):
-                    found_disabled_profiles.append(profile)
-
+            update = False
             refresh = 600
-            common = mongoConfig.get_common_config()
+            common = database.get_common_config()
             if common != None:
                 if 'refresh_time_sec' in common:
                     refresh = common['refresh_time_sec']
 
-            print('Sleep {} seconds before next check...'.format(refresh))
-            time.sleep(int(refresh))
+                if 'next_update_time' in common:
+                    if common['next_update_time'] < datetime.now():
+                        update = True
+                else:
+                    update = True
+            else:
+                database.set_common_config({
+                    "refresh_time_sec": refresh,
+                    "next_update_time": datetime.now() + timedelta(seconds=refresh)
+                })
+                update = True
 
-            disabled_devices = mongoConfig.get_all_disabled_devices()
+            if update:
+                found_disabled_profiles = []
+                for profile in database.get_profiles():
+                    if self.check_activity(profile):
+                        found_disabled_profiles.append(profile['name'])
 
-            # Enable any expired disablements
-            for d in disabled_devices:
-                if d not in found_disabled_profiles:
-                    self.toggle_network('Allow', mongoConfig.get_profile(d), '')
+                disabled_devices = database.get_all_disabled_devices()
+
+                # Enable any expired disablements
+                for d in disabled_devices:
+                    if d not in found_disabled_profiles:
+                        print('Couldnt find {}'.format(d))
+                        self.toggle_network('Allow', database.get_profile(d), '')
+
+                database.set_next_update_time(datetime.now() + timedelta(seconds=int(refresh)))
+            else:
+                self.refresh_all_devices()
+                time.sleep(60)
 
 def main():
     monitor_task = activity_monitor()

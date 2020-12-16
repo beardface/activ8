@@ -1,0 +1,24 @@
+<!-- debug.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <%- include('common/head'); %>
+  </head>
+
+  <body class="container">
+    <header>
+        <%- include('common/header'); %>
+    </header>
+    <br />
+    <pre>
+            Logs from the last 60m
+            ======================
+        <% logs.forEach((log) => { %>
+            <span style="color:<%= (log.message.includes('[ERROR]'))?'red':'black' %>">[<%= log.timestamp.toISOString() %>] <%= log.message %><% }) %></span>
+            
+    </pre>
+    <footer>
+      <%- include('common/footer'); %>
+    </footer>
+  </body>
+</html>

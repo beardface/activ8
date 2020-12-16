@@ -1,24 +1,45 @@
-<!-- index.ejs -->
+<!-- config.ejs -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <title>2FAt</title>
+      <%- include('common/head'); %>
   </head>
 
-  <body>
-    <h1> 2FAt Configuration</h1>
-    
-    <form action="/config_save" method="POST">
-      Router Username: <input type="text" placeholder="user" name="router_username"  value="<%= (config)?config.router_username:'' %>"> <br />
-      Router Password: <input type="password" placeholder="password" name="router_password" value="<%= (config)?config.router_password:'' %>"><br />
-      <br/>
-      Twilio Phone Number: <input type="text" placeholder="+13141234567" name="twilio_number" value="<%= (config)?config.twilio_number:'' %>"><br/>
-      Twilio SID: <input type="password" placeholder="twilio_sid" name="twilio_sid"  value="<%= (config)?config.twilio_sid:'' %>"><br/>
-      Twilio Auth Token: <input type="password" placeholder="twilio_auth_token" name="twilio_auth_token"  value="<%= (config)?config.twilio_auth_token:'' %>"><br/>
-      <br/>
-      Refresh Time Seconds: <input type="text" placeholder="600" name="refresh_time_sec" value="<%= (config)?config.refresh_time_sec:'' %>">
-      <button type="submit">Submit</button>
-    </form>
+  <body class="container">
+    <header>
+        <%- include('common/header'); %>
+    </header>
+    <br />
+    <center>
+      <form action="/config_save" method="POST">
+        <table width="400px">
+          <tr>
+            <td>Router Username:</td><td><input type="text" placeholder="user" name="router_username"  value="<%= (config)?config.router_username:'' %>"></td>
+          </tr>
+          <tr>
+            <td>Router Password:</td><td><input type="password" placeholder="password" name="router_password" value="<%= (config)?config.router_password:'' %>"></td>
+          </tr>
+          <tr>
+            <td>Twilio Phone Number:</td><td><input type="text" placeholder="+13141234567" name="twilio_number" value="<%= (config)?config.twilio_number:'' %>"></td>
+          </tr>
+          <tr>
+            <td>Twilio SID:</td><td><input type="password" placeholder="twilio_sid" name="twilio_sid"  value="<%= (config)?config.twilio_sid:'' %>"></td>
+          </tr>
+          <tr>
+            <td>Twilio Auth Token:</td><td><input type="password" placeholder="twilio_auth_token" name="twilio_auth_token"  value="<%= (config)?config.twilio_auth_token:'' %>"></td>
+          </tr>
+          <tr>
+            <td>Refresh Time Seconds:</td><td><input type="text" placeholder="600" name="refresh_time_sec" value="<%= (config)?config.refresh_time_sec:'' %>"></td>
+          </tr>
+          <tr><td><hr /></td><td><hr /></td></tr>
+          <tr>
+            <td></td><td><button type="submit">Save</button></td>
+          </tr>
+        </table>
+      </form>
+    </center>
+    <footer>
+      <%- include('common/footer'); %>
+    </footer>
   </body>
 </html>
