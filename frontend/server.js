@@ -4,13 +4,22 @@ const app = express();
 
 const MongoClient = require('mongodb').MongoClient
 
-const connectionString = "mongodb://127.0.0.1:27017"
+const connectionString = "mongodb://"+process.env.MONGO_HOST+":27017"
 //const connectionString = "mongodb://192.168.1.37:27017"
 
-// var faunadb = require('faunadb'), 
-//     q = faunadb.query
+var ObjectID            = require('mongodb').ObjectID;
 
-// var faunaClient = new faunadb.Client({ secret: process.env.FAUNADB_API_KEY })
+function getWeekDay(){
+    today = new Date();
+    //Create an array containing each day, starting with Sunday.
+    var weekdays = new Array(
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+    );
+    //Use the getDay() method to get the day.
+    var day = today.getDay();
+    //Return the element that corresponds to that index.
+    return weekdays[day];
+}
 
 MongoClient.connect(connectionString, {
     useUnifiedTopology: true
@@ -27,58 +36,61 @@ MongoClient.connect(connectionString, {
     
     app.get('/', (req, res) => {
 
-        // Enable FaunaDB
-        // faunaClient.query(
-        //     q.Map(
-        //         q.Paginate(q.Match(q.Index('profiles_index'))),
-        //         q.Lambda(x => q.Get(x))
-        //   )
-        // )
-        // .then((all_profiles) => {
-        //     faunaClient.query(
-        //         q.Map(
-        //             q.Paginate(q.Match(q.Index('all_devices_index'))),
-        //             q.Lambda(x => q.Get(x))
-        //     )
-        //     )
-        //     .then((all_devices) => {
-        //         profiles = []
-        //         all_profiles.data.forEach(element => {
-        //             data = element.data
-        //             data.ref = element.ref.id
-        //             profiles.push(data)
-        //         });
-
-        //         devices = []
-        //         console.log(all_devices)
-        //         all_devices.data.forEach(element => {
-        //             data = element.data
-        //             data.ref = element.ref.id
-        //             devices.push(data)
-        //         });
-    
-        //         res.render('index.ejs', {
-        //             profiles: profiles,
-        //             devices: devices
-        //         })
-        //     })
-        // })
-        // .catch(e => {
-        //     console.log(e)
-
-        //     res.render('index.ejs', {
-        //         profiles: [],
-        //         devices: []
-        //     })
-        // })
-
         db.collection('profiles').find().toArray()
         .then(profiles => {
             db.collection('all_devices').find().toArray()
             .then(devices => {
-                res.render('index.ejs', { 
-                    profiles: profiles,
-                    devices: devices
+                db.collection('disabled_devices').find().toArray()
+                .then(disabled => {
+                    db.collection('events').find().toArray()
+                    .then(events => {
+                        disabled.forEach(device => {
+                            profiles.forEach(profile => {
+                                if(device.name == profile.name) {
+                                    profile.disabled = true
+                                }
+                            })
+                        })
+
+                        events.forEach(event => {
+                            console.log(event)
+
+                            var name_of_day = getWeekDay();
+
+                            var today = new Date();
+                            var start = new Date('1/1/2020 '+event.start_time).getTime()
+                            var end = new Date('1/1/2020 '+event.end_time).getTime()
+                            var now = new Date('1/1/2020 '+today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds()).getTime()
+
+                            if((event.days.indexOf(name_of_day) > -1) && now > start && now < end) {
+                                profiles.forEach(profile => {
+                                    if(event.user == profile.name) {
+                                        if(!profile.active_events) {
+                                            profile.active_events = [event]       
+                                        } else {
+                                            profile.active_events.push(event)
+                                        }
+                                    }
+                                })
+                            } else {
+                                profiles.forEach(profile => {
+                                    if(event.user == profile.name) {
+                                        if(!profile.upcoming_events) {
+                                            profile.upcoming_events = [event]       
+                                        } else {
+                                            profile.upcoming_events.push(event)
+                                        }
+                                    }
+                                })
+                            }
+                        })
+
+                        res.render('index.ejs', { 
+                            profiles: profiles,
+                            devices: devices,
+                            disabled_devices: disabled,
+                        })
+                    })
                 })
             })
         })
@@ -86,39 +98,6 @@ MongoClient.connect(connectionString, {
     })
 
     app.get('/config', (req, res) => {
-        //res.sendFile(__dirname + '/index.html')
-
-        // Enable FaunaDB
-        // faunaClient.query(q.Get(
-        //     q.Ref(
-        //         q.Collection('config'), '1'
-        //     )
-        // ))
-        // .then((ret) => {
-        //         // decrypt password for edit
-        //         let buff = new Buffer(ret.data.twilio_sid, 'base64')
-        //         ret.data.twilio_sid = buff.toString('ascii')
-                
-        //         // decrypt password for edit
-        //         buff = new Buffer(ret.data.twilio_auth_token, 'base64')
-        //         ret.data.twilio_auth_token = buff.toString('ascii')
-                
-        //         // decrypt password for edit
-        //         buff = new Buffer(ret.data.router_password, 'base64')
-        //         ret.data.router_password = buff.toString('ascii')
-
-        //         res.render('config.ejs', { 
-        //             config: ret.data,
-        //         })
-        //     }
-        // )
-        // .catch(e => {
-        //         res.render('config.ejs', { 
-        //             config: {},
-        //         })
-        //     }
-        // )
-
         db.collection('config').findOne({})
         .then(config => {
             if(config && config.twilio_sid) {
@@ -152,70 +131,13 @@ MongoClient.connect(connectionString, {
         new_config.twilio_sid = Buffer.from(new_config.twilio_sid).toString('base64')
         new_config.twilio_auth_token = Buffer.from(new_config.twilio_auth_token).toString('base64')
 
-        // Enable FaunaDB
-        // faunaClient.query(q.Replace(
-        //     q.Ref(q.Collection('config'), '1'),
-        //     { data: new_config},
-        // ))
-        // .then((ret) => {
-        //     console.log("Configuration updated!")
-        //     console.log(ret)
-        // })
-        // .catch(
-        //     faunaClient.query(q.Create(
-        //         q.Ref(q.Collection('config'), '1'),
-        //         { data: new_config},
-        //     ))
-        //     .then((ret) => {
-        //         console.log("Configuration saved!")
-        //         console.log(ret)
-        //     })
-        //     .catch((e) => console.log(e))
-        // )
-
         const config = db.collection('config')
-        config.replaceOne({}, new_config, {upsert: true})
+        config.updateOne({}, { "$set": new_config})
 
         res.redirect('/')  
     })
     
     app.get('/profile_edit/:id', (req, res) => {
-
-        // Enable FaunaDB
-        // faunaClient.query(q.Get(
-        //     q.Ref(
-        //         q.Collection('profiles'), req.params.id)
-        //     )
-        // ).then((response) => {
-        //     faunaClient.query(
-        //         q.Map(
-        //             q.Paginate(q.Match(q.Index('all_devices_index'))),
-        //             q.Lambda(x => q.Get(x))
-        //     )
-        //     )
-        //     .then((all_devices) => {
-        //         devices = []
-        //         console.log(all_devices)
-        //         all_devices.data.forEach(element => {
-        //             data = element.data
-        //             data.ref = element.ref.id
-        //             devices.push(data)
-        //         });
-    
-        //         console.log(response)
-                
-        //         profile = response.data
-        //         profile.ref = response.ref.id
-    
-        //         res.render('profile_edit.ejs', { 
-        //             profile: profile,
-        //             devices: devices
-        //         })
-        //     })
-        // }).catch(e => {
-        //     console.log(e)
-        // })
-
         db.collection('profiles').findOne({name: req.params.id})
         .then(profile => {
             db.collection('all_devices').find().toArray()
@@ -244,19 +166,6 @@ MongoClient.connect(connectionString, {
     })
 
     app.post('/profile_new', (req, res) => {
-        // Enable FaunaDB
-        // faunaClient.query(
-        //     q.Create(
-        //         q.Collection('profiles'),
-        //         { data: { name: "new" }}
-        //     )
-        // ).then((ret) => {
-        //     console.log(ret)
-        //     res.redirect(req.get('referer'))
-        // }).catch(e => {
-        //     console.log(e)
-        //     res.redirect(req.get('referer'))
-        // })
         const config = db.collection('profiles')
         config.insertOne({
             name: "new",
@@ -268,20 +177,10 @@ MongoClient.connect(connectionString, {
     app.post('/profile_save/:id', (req, res) => {
         var profile = req.body
 
-        // Enable FaunaDB
-        // faunaClient.query(
-        //     q.Replace(
-        //         q.Ref(q.Collection('profiles'), req.params.id),
-        //         { data: profile}
-        //     )
-        // ).then((response) => {
-        //     console.log(response)
-        // }).catch(e => console.log(e))
-
         const profiles = db.collection('profiles')
         to_save = {
             "name": req.body.name,
-            "google_calendar_id": req.body.google_calendar_id,
+            "image": req.body.image,
             "notify_phone_number": req.body.notify_phone_number,
             "garmin_username": req.body.garmin_username,
             "devices": [],
@@ -294,21 +193,12 @@ MongoClient.connect(connectionString, {
         })
 
         to_save.garmin_password = Buffer.from(req.body.garmin_password).toString('base64')
-        profiles.replaceOne({name: req.params.id}, to_save, {upsert: true})
+        profiles.updateOne({name: req.params.id}, {"$set": to_save}, {upsert: true})
 
         res.redirect('/')
     })
 
     app.post('/profile_delete/:id', (req, res) => {
-        // Enable FaunaDB
-        // faunaClient.query(
-        //     q.Delete(
-        //         q.Ref(q.Collection('profiles'), req.params.id)
-        //     )
-        // ).then((response) => {
-        //     console.log(response)
-        // }).catch(e => console.log(e))
-
         const config = db.collection('profiles')
         config.deleteOne({
             name: req.params.id
@@ -324,6 +214,90 @@ MongoClient.connect(connectionString, {
                 logs: result,
             })
         })
+    })
+
+    app.post('/force_refresh', (req, res) => {
+        const config = db.collection('config')
+        config.updateOne({}, {"$set": {
+            "next_update_time": new Date('2000-01-22T14:56:59.301Z')
+        }})
+
+        res.redirect('/')
+    })
+    
+    app.get('/event_edit/:id', (req, res) => {
+        db.collection('events').findOne({_id: new ObjectID(req.params.id)})
+        .then(events => {
+            console.log(events)
+
+            res.render('event.ejs', { 
+                event: events
+            })
+        })
+        .catch(/* ... */)
+    })
+
+    app.post('/event_save/:id', (req, res) => {
+        var event = req.body
+
+        to_save = {
+            title: event.title,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            value: event.value,
+            activity: event.activity,
+            days: []
+        }
+
+        if(event['day_sunday'] == 'on'){
+            to_save.days.push('Sunday')
+        }
+        if(event['day_monday'] == 'on'){
+            to_save.days.push('Monday')
+        }
+        if(event['day_tuesday'] == 'on'){
+            to_save.days.push('Tuesday')
+        }
+        if(event['day_wednesday'] == 'on'){
+            to_save.days.push('Wednesday')
+        }
+        if(event['day_thursday'] == 'on'){
+            to_save.days.push('Thursday')
+        }
+        if(event['day_friday'] == 'on'){
+            to_save.days.push('Friday')
+        }
+        if(event['day_saturday'] == 'on'){
+            to_save.days.push('Saturday')
+        }
+
+        db.collection('events').updateOne({_id: new ObjectID(req.params.id)}, {"$set": to_save}, {upsert: true})
+        
+        res.redirect('/')
+    })
+    
+    app.post('/event_new/:name', (req, res) => {
+        const config = db.collection('events')
+        config.insertOne({
+            user: req.params.name,
+            days: [],
+            title: '',
+            start_time: '00:00:00',
+            end_time: '00:00:00',
+            activity: 'STEPS',
+            value: 0
+        })
+
+        res.redirect('/')
+    })
+
+    app.post('/event_delete/:id', (req, res) => {
+        const config = db.collection('events')
+        config.deleteOne({
+            _id: new ObjectID(req.params.id)
+        })
+
+        res.redirect('/')
     })
   })
   .catch(error => console.error(error))

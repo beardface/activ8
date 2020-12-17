@@ -1,7 +1,9 @@
 import base64
 import pymongo
+import os
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
+import calendar
 
 class MongoConfigDB:
     def update_profile(self, profile_name, devices, notify_phone_number, garmin_username, garmin_password, google_calendar_id):
@@ -102,6 +104,31 @@ class MongoConfigDB:
             
         return response
 
+    def is_between(time, time_range):
+        if time_range[1] < time_range[0]:
+            return time >= time_range[0] or time <= time_range[1]
+        return time_range[0] <= time <= time_range[1]
+
+    def get_active_user_events(self, profile_name):
+        events = []
+
+        my_date = date.today()
+        today = calendar.day_name[my_date.weekday()]
+         
+        if "events" in self.db.list_collection_names():
+            for e in self.db["events"].find({"user": profile_name}):
+                if today in e['days']:
+                    now = datetime.now()
+
+                    current_time = now.strftime("%H:%M:%S")
+                    sH,sM,sS = e['start_time'].split(':')
+                    eH,eM,eS = e['end_time'].split(':')
+                    nH,nM,nS = current_time.split(':')
+                    if time(int(sH), int(sM), int(sS)) <  time(int(nH),int(nM),int(nS)) < time(int(eH),int(eM),int(eS)):
+                        events.append(e)
+            
+        return events
+
     def set_common_config(self, common_config):
         if "config" in self.db.list_collection_names():
             commonConfig = self.db["config"]
@@ -151,5 +178,9 @@ class MongoConfigDB:
         )
 
     def init(self):
-        self.mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+        mongo_host = "localhost"
+        if os.getenv("MONGO_HOST") != None:
+            print(os.getenv("MONGO_HOST"))
+            mongo_host = os.getenv("MONGO_HOST")
+        self.mongo_client = pymongo.MongoClient("mongodb://{}:27017/".format(mongo_host))
         self.db = self.mongo_client["activ8"]

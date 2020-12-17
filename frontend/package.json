@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "export PORT=3000 || set PORT=3000&& nodemon server.js",
+    "dev": "export PORT=3000 || set PORT=3000&& export MONGO_HOST=127.0.0.1 || set MONGO_HOST=127.0.0.1&& nodemon server.js",
     "prod": "export PORT=80 || set PORT=80&& node server.js"
   },
   "keywords": [],

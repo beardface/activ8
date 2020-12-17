@@ -16,23 +16,95 @@
         <button type="submit">+</button>
       </form></td></tr>
     </table>
-  
-    <% profiles.forEach((profile) => { %>
-      <hr />
-        <b>Name:</b> <%= (profile.name)?profile.name:'' %><br />
-        <b>Steps:</b> <%= (profile.steps)?profile.steps:'' %><br /><br />
-        <iframe src="https://calendar.google.com/calendar/embed?src=<%= (profile.google_calendar_id)?profile.google_calendar_id:'' %>&ctz=America%2FChicago&mode=WEEK" style="border: 0" width="700" height="300" frameborder="0" scrolling="no"></iframe><br />
-        <br />
-        <b>Blocked:</b>  <%= (profile.blocked) %><br />
-        <b>Last Checked:</b> <%= (profile.last_checked_time)?profile.last_checked_time:'' %><br />
 
-        <form action="/profile_edit/<%= (profile.name)?profile.name:'' %>" method="GET">
-          <button type="submit">Edit</button>
-        </form>
+    <% profiles.forEach((profile) => { %>
+      <div style="background:<%= (profile.disabled)?'indianred':'white' %>">
         <hr />
+          <table>
+            <tr>
+              <td>
+                <img style="border-radius: 50%;" src="<%= (profile.image)?profile.image:''%>" height=100px width=100px alt="Avatar">
+              </td>
+              <td>
+                &nbsp;
+                &nbsp;
+                &nbsp;
+              </td>
+              <td>
+                <b>Name:</b> <%= (profile.name)?profile.name:'' %><br />
+                <b>Devices:</b> <%= (profile.devices)?profile.devices.length:'0' %> Device(s)<br />
+                <b>Steps:</b> <%= (profile.steps)?profile.steps:'' %><br /><br />
+              </td>
+              <td>
+                <form action="/profile_edit/<%= (profile.name)?profile.name:'' %>" method="GET">
+                  
+                &nbsp;
+                &nbsp;<button type="submit">Edit</button>
+                </form>
+              </td>
+            </tr>
+          </table>
+          <br />
+          <h3>Active Required Activities</h3>
+          <table>
+          <% if(profile.active_events){%>
+          <% profile.active_events.forEach((event) => { %>
+              <tr>
+                <td>
+                  <hr />
+                  <h5><b><%= (event.title)?event.title:'' %></b> [<%= (event.days)?event.days:'' %>] <%= (event.start_time)?event.start_time:'' %> - <%= (event.end_time)?event.end_time:'' %></h5>
+                  <b><%= (event.activity)?event.activity:'' %>:</b> <%= (event.value)?event.value:'' %>
+                  <hr />
+                </td>
+                <td>
+                  <form action="/event_edit/<%= (event._id)?event._id:'' %>" method="GET"><button type="submit">Edit</button></form>
+                </td>
+                <td>
+                  <form action="/event_delete/<%= (event._id)?event._id:'' %>" method="POST"><button type="submit">Delete</button></form>
+                </td>
+              </tr>
+          <%})%>
+          <% } else { %>
+            None
+          <% } %>
+          </table>
+          <br />
+          <h5>Upcoming Activities</h5>
+          <table>
+          <% if(profile.upcoming_events){%>
+          <% profile.upcoming_events.forEach((event) => { %>
+            <tr>
+              <td>
+                <hr />
+                <h7><b><%= (event.title)?event.title:'' %></b> [<%= (event.days)?event.days:'' %>] <%= (event.start_time)?event.start_time:'' %> - <%= (event.end_time)?event.end_time:'' %></h7>
+                <b><%= (event.activity)?event.activity:'' %>:</b> <%= (event.value)?event.value:'' %>
+                <hr />
+              </td>
+              <td>
+                <form action="/event_edit/<%= (event._id)?event._id:'' %>" method="GET"><button type="submit">Edit</button></form>
+              </td>
+              <td>
+                <form action="/event_delete/<%= (event._id)?event._id:'' %>" method="POST"><button type="submit">Delete</button></form>
+              </td>
+            </tr>
+          <%})%>
+          <% } else { %>
+            None
+          <% } %>
+          </table>
+          <br />
+          <form action="/event_new/<%= (profile.name)?profile.name:'' %>" method="POST"><button type="submit">New Activity</button></form>
+          <br />
+          <b><%= (profile.disabled)?'This Users Devices are currently disabled!':'' %></b><br />
+
+        <hr />
+      </div>
     <br />
     <% }) %>
     
+    <form action="/force_refresh" method="POST">
+      <button type="submit">Force activity check now</button>
+    </form></td></tr>
     <!-- <h2>Devices</h2>
     <% devices.forEach((device) => { %>
       <hr />

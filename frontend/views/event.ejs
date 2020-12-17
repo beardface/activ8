@@ -1,0 +1,72 @@
+<!-- index.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <%- include('common/head'); %>
+  </head>
+
+  <body class="container">
+    <header>
+        <%- include('common/header'); %>
+    </header>
+  
+    <hr />
+    <form action="/event_save/<%= event._id %>" method="POST">
+      <table>
+        <tr>
+          <td>User:</td><td><input type="text" placeholder="user" name="user" value="<%= (event.user)?event.user:'' %>" readonly disabled></td>
+        </tr>
+        <tr>
+          <td>Event Title:</td><td><input type="text" placeholder="title" name="title" value="<%= (event.title)?event.title:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Start Time:</td><td><input type="text" placeholder="start_time" name="start_time" value="<%= (event.start_time)?event.start_time:'' %>"></td><td>End Time:</td><td><input type="text" placeholder="end_time" name="end_time" value="<%= (event.end_time)?event.end_time:'' %>"></td>
+        </tr>
+        <tr>
+          <td>Days:</td>
+          <td>
+            <input type="checkbox" name="day_sunday" <%= (event.days.indexOf('Sunday') > -1)?'checked':'' %>>
+            <label>Sunday</label>
+            <br />
+            <input type="checkbox" name="day_monday" <%= (event.days.indexOf('Monday') > -1)?'checked':'' %>>
+            <label>Monday</label>
+            <br />
+            <input type="checkbox" name="day_tuesday" <%= (event.days.indexOf('Tuesday') > -1)?'checked':'' %>>
+            <label>Tuesday</label>
+            <br />
+            <input type="checkbox" name="day_wednesday" <%= (event.days.indexOf('Wednesday') > -1)?'checked':'' %>>
+            <label>Wednesday</label>
+            <br />
+            <input type="checkbox" name="day_thursday" <%= (event.days.indexOf('Thursday') > -1)?'checked':'' %>>
+            <label>Thursday</label>
+            <br />
+            <input type="checkbox" name="day_friday" <%= (event.days.indexOf('Friday') > -1)?'checked':'' %>>
+            <label>Friday</label>
+            <br />
+            <input type="checkbox" name="day_saturday" <%= (event.days.indexOf('Saturday') > -1)?'checked':'' %>>
+            <label>Saturday</label>
+          </td>
+        </tr>
+        <tr>
+          <td>Activity:</td>
+          <td>
+              <select name="activity">
+                <option name="activity" value='STEPS' <%= (event.activity== 'STEPS')?'selected':'' %>>STEPS</option>
+              </select>
+          </td><td>=</td><td><input type="text" placeholder="value" name="value" value="<%= (event.value)?event.value:'' %>"></td>
+        </tr>
+      </table>
+      <br />
+      <button type="submit">Save</button>
+    </form>
+    <br />
+    <br />
+    <form action="/" method="GET">
+      <button type="submit">Back</button>
+    </form>
+
+    <footer>
+      <%- include('common/footer'); %>
+    </footer>
+  </body>
+</html>

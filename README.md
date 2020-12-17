@@ -39,14 +39,83 @@ Format <stat>=<value> (`ex. totalKilocalories=1000` would require a totalKilocal
 | vigorousIntensityMinutes | Cumulative duration of activities of vigorous intensity, lasting at least 600 seconds at a time. Vigorous intensity is defined as activity with MET (resting metabolic rate) value > 6 | int |
 | maxHeartRate | Maximum of heart rate values captured during the monitoring period, in beats per minute | int |
 
-## Configuration
-To this deployment, you'll need to install a local mongodb database.
-
-It'll also need to be seeded with configuration; coming soon will be a front-end component to guide you through that.
-
-You'll also need to place a `credentials.json` file in the folder that enables you to connect to the Google Calendar API. [here](https://developers.google.com/calendar/quickstart/go)
-
 ## Twilio
 You can add a twilio account to configuration to get a text message when your device is being disabled due to failing your fitness goals.
 
 <img src="https://github.com/beardface/2FAt.club/blob/main/twilio.jpg?raw=true" width="300">
+
+### Building
+```
+# Backend
+docker build .
+docker tag <hash> activ8/backend:<version>
+docker push activ8/backend:<version>
+```
+
+```
+# Frontemd
+cd frontend
+docker build .
+docker tag <hash> activ8/frontend:<version>
+docker push activ8/frontend:<version>
+```
+
+## Installing / Setting up
+1. Flash Berry Lan on a Raspberry Pi Zero and Connect the WiFi
+http://berrylan.org/
+
+2. Install Docker
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no pi@raspberrypi.local
+
+`sudo apt-get update && sudo apt-get upgrade`
+
+# Install Docker on Raspberry Pi
+```
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker pi
+sudo reboot
+```
+
+3. Log back in and Start Containers
+
+# Create Network
+`docker network create internal-activ8-network`
+
+# Start Mongo
+```
+docker run -d \
+--name rpi3-mongodb3 \
+--restart unless-stopped \
+-v /data/db:/data/db \
+-v /data/configdb:/data/configdb \
+-p 27017:27017 \
+-p 28017:28017 \
+--network internal-activ8-network \
+andresvidal/rpi3-mongodb3:latest \
+mongod
+```
+
+# Start Backend
+```
+docker run -d \
+--name activ8-backend \
+--restart unless-stopped \
+-e MONGO_HOST=rpi3-mongodb3 \
+--network internal-activ8-network \
+activ8/backend:0.0.3
+```
+
+# Start Frontend
+```
+docker run -d \
+--name activ8-frontend \
+--restart unless-stopped \
+--network internal-activ8-network \
+-e MONGO_HOST=rpi3-mongodb3 \
+-p 80:80 \
+activ8/frontend:0.0.3
+```
+
+4. You're done!
+On your local network, head to [http://raspberrypi.local](http://raspberrypi.local) to configure

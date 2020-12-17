@@ -16,11 +16,7 @@ from garminconnect import (
     GarminConnectAuthenticationError,
 )
 
-import pickle
 import os.path
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 
 from datetime import date, datetime, timezone, timedelta
 
@@ -28,13 +24,11 @@ import time
 
 from twilio.rest import Client
 
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-
 import requests
 from urllib3.exceptions import InsecureRequestWarning
 
 import mongo_client
-import faunadb_client
+# import faunadb_client
 
 # Suppress only the single warning from urllib3 needed.
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
@@ -195,62 +189,16 @@ class activity_monitor():
         if end < start:
             return time >= start or time <= end
         return start <= time <= end
-
-    def get_active_events(self, profile):
-        creds = None
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
-                creds = pickle.load(token)
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
-                creds = flow.run_local_server(port=0)
-
-            with open('token.pickle', 'wb') as token:
-                pickle.dump(creds, token)
-
-        service = build('calendar', 'v3', credentials=creds)
-
-        if "google_calendar_id" not in profile:
-            self.debug("[ERROR] No valid Google Calendar ID for profile, can't get schedule!")
-            return []
-
-        now = datetime.utcnow().isoformat() + 'Z'
-        events_result = service.events().list(calendarId=profile["google_calendar_id"], timeMin=now,
-                                            maxResults=10, singleEvents=True,
-                                            orderBy='startTime').execute()
-        events = events_result.get('items', [])
-
-        valid_events = []
-        if not events:
-            return []
-        for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            end = event['end'].get('dateTime', event['end'].get('date'))
-
-            right_now = datetime.now(timezone.utc)
-            if self.time_in_range(datetime.strptime(start, '%Y-%m-%dT%H:%M:%S%z'), datetime.strptime(end, '%Y-%m-%dT%H:%M:%S%z'), right_now):
-                valid_events.append(event['summary'])
-            
-        return valid_events
         
-    def process_command(self, command, param, profile):
-        print('Handling {} ({}) for {}'.format(command, param, profile["name"]))
+    def process_command(self, event, profile):
+        print('Handling {}: {} ({}) for {}'.format(event['title'], event['activity'], event['value'], profile["name"]))
 
-        if command == "TOGGLE":
-            self.toggle_network(param, profile, "")
-        elif command == "STEPS":
-            self.validate_steps(param, profile)
-        elif command == "STATS":
-            parts = str.split(param, '=')
-            if len(parts) == 2:
-                self.validate_stats(parts[0], int(parts[1]), profile)
-            else:
-                self.debug("[ERROR] Invalid format for STATS parameter ({}) expected <stat>=<value>!".format(param))
+        if event['activity'] == "TOGGLE":
+            self.toggle_network(event['value'], profile, "")
+        elif event['activity'] == "STEPS":
+            self.validate_steps(event['value'], profile)
+        elif event['activity'] == "STATS":
+            self.validate_stats(event['stat'], event['value'], profile)
 
     def is_mac_address(self, name):
         if len(str.split(name, ':')) == 6:
@@ -259,13 +207,10 @@ class activity_monitor():
             return False
 
     def check_activity(self, profile):
-        events = self.get_active_events(profile)
+        events = database.get_active_user_events(profile['name'])
         block_found = False
         for event in events:
-            parts = str.split(event, ';')
-            if len(parts) == 2:
-                self.process_command(parts[0], parts[1], profile)
-                block_found = True
+            self.process_command(event, profile)
         
         database.update_profile_stats(profile["name"], block_found, datetime.now())
         return block_found
@@ -313,18 +258,21 @@ class activity_monitor():
                     refresh = common['refresh_time_sec']
 
                 if 'next_update_time' in common:
-                    if common['next_update_time'] < datetime.now():
+                    if common['next_update_time'] < datetime.utcnow():
                         update = True
                 else:
                     update = True
             else:
                 database.set_common_config({
                     "refresh_time_sec": refresh,
-                    "next_update_time": datetime.now() + timedelta(seconds=refresh)
+                    "next_update_time": datetime.utcnow() + timedelta(seconds=refresh)
                 })
                 update = True
 
             if update:
+                self.refresh_all_devices()
+
+                self.debug("[INFO] Processing activity for Users Now...")
                 found_disabled_profiles = []
                 for profile in database.get_profiles():
                     if self.check_activity(profile):
@@ -338,10 +286,9 @@ class activity_monitor():
                         print('Couldnt find {}'.format(d))
                         self.toggle_network('Allow', database.get_profile(d), '')
 
-                database.set_next_update_time(datetime.now() + timedelta(seconds=int(refresh)))
+                database.set_next_update_time(datetime.utcnow() + timedelta(seconds=int(refresh)))
             else:
-                self.refresh_all_devices()
-                time.sleep(60)
+                time.sleep(5)
 
 def main():
     monitor_task = activity_monitor()
