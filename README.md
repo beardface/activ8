@@ -9,6 +9,8 @@ For example, if you **wanted to turn off your internet to your Desktop or Mobile
 
 **Staying up too late and want your device's internet to shut off per a scheduled calendar event?** Yep.
 
+<img src="https://github.com/beardface/2FAt.club/blob/main/main.png?raw=true" width="500">
+
 ## How does it work?
 This works by integrating with Garmin Connect to get your activity, and your nighthawk router to remotely control devices by MAC address.
 
