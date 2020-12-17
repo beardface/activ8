@@ -14,12 +14,6 @@ This works by integrating with Garmin Connect to get your activity, and your nig
 
 To set up time periods for device control, you create a Google Calendar and add events that correlate with control of those devices.
 
-## Syntax for Control on Google Calendar
-The syntax for control on the calendar is:
-`<COMMAND>;<PARAM>;<MAC ADDRESS>`
-
-![Calendar](https://github.com/beardface/2FAt.club/blob/main/2FAt_Calendar.png?raw=true)
-
 **Supported Commands:**
 * `TOGGLE` - This will take a param of `Allow` or `Block` to turn on or off internet access during a time period to devices
 * `STEPS` - This command takes a parameter (int) of the number of steps required for the day to avoid disabling internet access.
