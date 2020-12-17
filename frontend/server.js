@@ -1,11 +1,11 @@
 const express = require('express');
 const bodyParser= require('body-parser')
 const app = express();
-
 const MongoClient = require('mongodb').MongoClient
 
-const connectionString = "mongodb://"+process.env.MONGO_HOST+":27017"
-//const connectionString = "mongodb://192.168.1.37:27017"
+var moment = require('moment');
+//const connectionString = "mongodb://"+process.env.MONGO_HOST+":27017"
+const connectionString = "mongodb://192.168.1.17:27017"
 
 var ObjectID            = require('mongodb').ObjectID;
 
@@ -89,6 +89,7 @@ MongoClient.connect(connectionString, {
                             profiles: profiles,
                             devices: devices,
                             disabled_devices: disabled,
+                            moment: moment,
                         })
                     })
                 })
@@ -120,6 +121,7 @@ MongoClient.connect(connectionString, {
 
             res.render('config.ejs', { 
                 config: config,
+                moment: moment,
             })
         })
         .catch(/* ... */)
@@ -158,7 +160,8 @@ MongoClient.connect(connectionString, {
 
                 res.render('profile_edit.ejs', { 
                     profile: profile,
-                    devices: devices
+                    devices: devices,
+                    moment: moment,
                 })
             })
         })
@@ -212,6 +215,7 @@ MongoClient.connect(connectionString, {
         logs.find().limit(100).sort({$natural:1}).toArray().then(result => {
             res.render('debug.ejs', { 
                 logs: result,
+                moment: moment,
             })
         })
     })
@@ -231,7 +235,8 @@ MongoClient.connect(connectionString, {
             console.log(events)
 
             res.render('event.ejs', { 
-                event: events
+                event: events,
+                moment: moment,
             })
         })
         .catch(/* ... */)

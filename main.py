@@ -76,7 +76,7 @@ class activity_monitor():
 
         if "router_username" not in common_config or "router_password" not in common_config:
             self.debug("[ERROR] No valid router configuration provided! Can't toggle network.")
-            return
+            return False
 
         netgear = Netgear(
             password=base64.b64decode(common_config['router_password']).decode('utf-8'),
@@ -93,7 +93,7 @@ class activity_monitor():
                     netgear.allow_block_device(mac_addr=device, device_status=denyallow)
         else:
             self.debug("[ERROR] No profile provided, can't toggle devices!")
-            return
+            return False
 
         disabled_devices = database.get_all_disabled_devices()
         if denyallow == "Block" and profile["name"] not in disabled_devices:
@@ -107,6 +107,7 @@ class activity_monitor():
                     )
 
             database.insert_disabled_device(profile["name"])
+            return True
         
         if denyallow == "Allow" and profile["name"] in disabled_devices:
             if message != '' and common_config['twilio_number']:
@@ -118,6 +119,7 @@ class activity_monitor():
                 )
 
             database.remove_disabled_device(profile["name"])
+            return False
 
     def validate_steps(self, required_steps, profile):
         today = date.today()
@@ -125,7 +127,7 @@ class activity_monitor():
         client = self.init_garmin_client(profile)
         if client == None:
             self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
-            return
+            return False
 
         all_steps = 0
         try:
@@ -138,20 +140,20 @@ class activity_monitor():
             GarminConnectTooManyRequestsError,
         ) as err:
             self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
-            return
+            return False
         except Exception:  # pylint: disable=broad-except
             self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
-            return
+            return False
         
         database.update_profile_steps(profile["name"], all_steps)
         if all_steps >= int(required_steps):
             msg = 'You\'ve taken {} steps, which is greater than the required {}! Enabling your device ({})!'.format(all_steps, required_steps, profile["name"])
             self.debug('[INFO] Sending: {}'.format(msg))
-            self.toggle_network('Allow', profile, msg)
+            return self.toggle_network('Allow', profile, msg)
         else:
             msg = 'Oh No! You\'ve only taken {} steps, which is less than the required {}! Disabling your device ({}) until you take care of business!'.format(all_steps, required_steps, profile["name"])
             self.debug('[INFO] Sending: {}'.format(msg))
-            self.toggle_network('Block', profile, msg)
+            return self.toggle_network('Block', profile, msg)
 
     def validate_stats(self, stat, required_value, profile):
         today = date.today()
@@ -159,7 +161,7 @@ class activity_monitor():
         client = self.init_garmin_client(profile)
         if client == None:
             self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
-            return
+            return False
 
         value = 0
         try:
@@ -171,19 +173,19 @@ class activity_monitor():
             GarminConnectTooManyRequestsError,
         ) as err:
             self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
-            return
+            return False
         except Exception:  # pylint: disable=broad-except
             self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
-            return
+            return False
         
         if value >= int(required_value):
             msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, profile["name"])
             self.debug('[INFO] Sending: {}'.format(msg))
-            self.toggle_network('Allow', profile, msg)
+            return self.toggle_network('Allow', profile, msg)
         else:
             msg = 'Oh No! Value in Garmin Connect for {} was {}, which is less than the required {}! Disabling your device ({}) until you take care of business!!'.format(stat, value, required_value, profile["name"])
             self.debug('[INFO] Sending: {}'.format(msg))
-            self.toggle_network('Block', profile, msg)
+            return self.toggle_network('Block', profile, msg)
 
     def time_in_range(self, start, end, time):
         if end < start:
@@ -194,11 +196,11 @@ class activity_monitor():
         print('Handling {}: {} ({}) for {}'.format(event['title'], event['activity'], event['value'], profile["name"]))
 
         if event['activity'] == "TOGGLE":
-            self.toggle_network(event['value'], profile, "")
+            return self.toggle_network(event['value'], profile, "")
         elif event['activity'] == "STEPS":
-            self.validate_steps(event['value'], profile)
+            return self.validate_steps(event['value'], profile)
         elif event['activity'] == "STATS":
-            self.validate_stats(event['stat'], event['value'], profile)
+            return self.validate_stats(event['stat'], event['value'], profile)
 
     def is_mac_address(self, name):
         if len(str.split(name, ':')) == 6:
@@ -210,7 +212,9 @@ class activity_monitor():
         events = database.get_active_user_events(profile['name'])
         block_found = False
         for event in events:
-            self.process_command(event, profile)
+            res = self.process_command(event, profile)
+            if res:
+                block_found = True
         
         database.update_profile_stats(profile["name"], block_found, datetime.now())
         return block_found
@@ -278,12 +282,15 @@ class activity_monitor():
                     if self.check_activity(profile):
                         found_disabled_profiles.append(profile['name'])
 
+                self.debug("[INFO] Sleeping 30 seconds before processing networks to allow...")
+                time.sleep(30)
                 disabled_devices = database.get_all_disabled_devices()
 
                 # Enable any expired disablements
                 for d in disabled_devices:
                     if d not in found_disabled_profiles:
-                        print('Couldnt find {}'.format(d))
+                        self.debug("[INFO] Re-enabling {} as it is disabled, but not in the registered disabled devices: {} (found: {})".format(
+                            d, disabled_devices, found_disabled_profiles))
                         self.toggle_network('Allow', database.get_profile(d), '')
 
                 database.set_next_update_time(datetime.utcnow() + timedelta(seconds=int(refresh)))

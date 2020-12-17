@@ -16,6 +16,7 @@
     "ejs": "^3.1.5",
     "express": "^4.17.1",
     "faunadb": "^4.0.0",
+    "moment": "^2.29.1",
     "mongodb": "^3.6.3"
   },
   "devDependencies": {

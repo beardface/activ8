@@ -14,16 +14,16 @@
     <form action="/event_save/<%= event._id %>" method="POST">
       <table>
         <tr>
-          <td>User:</td><td><input type="text" placeholder="user" name="user" value="<%= (event.user)?event.user:'' %>" readonly disabled></td>
+          <td><b>User:</b></td><td><input type="text" placeholder="user" name="user" value="<%= (event.user)?event.user:'' %>" readonly disabled></td>
         </tr>
         <tr>
-          <td>Event Title:</td><td><input type="text" placeholder="title" name="title" value="<%= (event.title)?event.title:'' %>"></td>
+          <td><b>Event Title:</b></td><td><input type="text" placeholder="title" name="title" value="<%= (event.title)?event.title:'' %>"></td>
         </tr>
         <tr>
-          <td>Start Time:</td><td><input type="text" placeholder="start_time" name="start_time" value="<%= (event.start_time)?event.start_time:'' %>"></td><td>End Time:</td><td><input type="text" placeholder="end_time" name="end_time" value="<%= (event.end_time)?event.end_time:'' %>"></td>
+          <td><b>Start Time:</b></td><td><input type="text" placeholder="start_time" name="start_time" value="<%= (event.start_time)?event.start_time:'' %>">UTC</td><td>&nbsp;&nbsp;<b>End Time:</b></td><td><input type="text" placeholder="end_time" name="end_time" value="<%= (event.end_time)?event.end_time:'' %>"> UTC</td>
         </tr>
         <tr>
-          <td>Days:</td>
+          <td  style="vertical-align: top;"><b>Days:</b></td>
           <td>
             <input type="checkbox" name="day_sunday" <%= (event.days.indexOf('Sunday') > -1)?'checked':'' %>>
             <label>Sunday</label>
@@ -48,7 +48,7 @@
           </td>
         </tr>
         <tr>
-          <td>Activity:</td>
+          <td><b>Activity:</b></td>
           <td>
               <select name="activity">
                 <option name="activity" value='STEPS' <%= (event.activity== 'STEPS')?'selected':'' %>>STEPS</option>
