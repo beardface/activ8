@@ -1,4 +1,4 @@
-# 2FAt.club
+# ACTIV8
 This repository allows you to disable network access to any devices if you don't meet an activity goal for a time period.
 
 For example, if you **wanted to turn off your internet to your Desktop or Mobile unless you've gotten a certain number of steps for the day...** this will do that for you.
@@ -9,7 +9,7 @@ For example, if you **wanted to turn off your internet to your Desktop or Mobile
 
 **Staying up too late and want your device's internet to shut off per a scheduled calendar event?** Yep.
 
-<img src="https://github.com/beardface/2FAt.club/blob/main/main.png?raw=true" width="500">
+<img src="https://github.com/beardface/activ8/blob/main/main.png?raw=true" width="500">
 
 ## How does it work?
 This works by integrating with Garmin Connect to get your activity, and your nighthawk router to remotely control devices by MAC address.
@@ -38,7 +38,7 @@ Format <stat>=<value> (`ex. totalKilocalories=1000` would require a totalKilocal
 ## Twilio
 You can add a twilio account to configuration to get a text message when your device is being disabled due to failing your fitness goals.
 
-<img src="https://github.com/beardface/2FAt.club/blob/main/twilio.jpg?raw=true" width="300">
+<img src="https://github.com/beardface/activ8/blob/main/twilio.jpg?raw=true" width="300">
 
 ### Building
 ```
