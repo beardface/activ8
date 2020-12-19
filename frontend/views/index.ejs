@@ -18,7 +18,7 @@
     </table>
 
     <% profiles.forEach((profile) => { %>
-      <div style="background:<%= (profile.disabled)?'indianred':'white' %>">
+      <div style="background:<%= (profile.blocked)?'indianred':'white' %>">
         <hr />
           <table>
             <tr>
@@ -95,7 +95,7 @@
           <br />
           <form action="/event_new/<%= (profile.name)?profile.name:'' %>" method="POST"><button type="submit">New Activity</button></form>
           <br />
-          <b><%= (profile.disabled)?'This Users Devices are currently disabled!':'' %></b><br />
+          <b><%= (profile.blocked)?'This Users Devices are currently disabled!':'' %></b><br />
 
         <hr />
       </div>

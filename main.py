@@ -74,9 +74,10 @@ class activity_monitor():
     def toggle_network(self, denyallow, profile, message):
         common_config = database.get_common_config()
 
+        disabled_mac = []
         if "router_username" not in common_config or "router_password" not in common_config:
             self.debug("[ERROR] No valid router configuration provided! Can't toggle network.")
-            return False
+            return []
 
         netgear = Netgear(
             password=base64.b64decode(common_config['router_password']).decode('utf-8'),
@@ -91,13 +92,22 @@ class activity_monitor():
             if "devices" in profile:
                 for device in profile['devices']:
                     netgear.allow_block_device(mac_addr=device, device_status=denyallow)
+                    
+                    if denyallow == "Block":
+                        disabled_mac.append(device)
         else:
             self.debug("[ERROR] No profile provided, can't toggle devices!")
-            return False
+            return []
 
         disabled_devices = database.get_all_disabled_devices()
-        if denyallow == "Block" and profile["name"] not in disabled_devices:
-            if message != '' and common_config['twilio_number']:
+        if denyallow == "Block":
+            notify = False
+            for d in disabled_mac:
+                if d not in disabled_devices:
+                    database.insert_disabled_device(d)
+                    notify = True
+
+            if notify and message != '' and common_config['twilio_number']:
                 if 'twilio_sid' in common_config:
                     twilioClient = Client(base64.b64decode(common_config['twilio_sid']).decode("utf-8"), base64.b64decode(common_config['twilio_auth_token']).decode("utf-8"))
                     twilioClient.messages.create(
@@ -106,10 +116,15 @@ class activity_monitor():
                         body=message
                     )
 
-            database.insert_disabled_device(profile["name"])
-            return True
+            return disabled_mac
         
-        if denyallow == "Allow" and profile["name"] in disabled_devices:
+        if denyallow == "Allow":
+            notify = False
+            for d in disabled_devices:
+                if d in profile['devices']:
+                    database.remove_disabled_device(d)
+                    notify = True
+
             if message != '' and common_config['twilio_number']:
                 twilioClient = Client(base64.b64decode(common_config['twilio_sid']).decode("utf-8"), base64.b64decode(common_config['twilio_auth_token']).decode("utf-8"))
                 twilioClient.messages.create(
@@ -118,8 +133,7 @@ class activity_monitor():
                     body='Hooray!  {}'.format(message)
                 )
 
-            database.remove_disabled_device(profile["name"])
-            return False
+            return []
 
     def validate_steps(self, required_steps, profile):
         today = date.today()
@@ -127,7 +141,7 @@ class activity_monitor():
         client = self.init_garmin_client(profile)
         if client == None:
             self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
-            return False
+            return []
 
         all_steps = 0
         try:
@@ -140,10 +154,10 @@ class activity_monitor():
             GarminConnectTooManyRequestsError,
         ) as err:
             self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
-            return False
+            return []
         except Exception:  # pylint: disable=broad-except
             self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
-            return False
+            return []
         
         database.update_profile_steps(profile["name"], all_steps)
         if all_steps >= int(required_steps):
@@ -161,7 +175,7 @@ class activity_monitor():
         client = self.init_garmin_client(profile)
         if client == None:
             self.debug("[ERROR] Unable to validate steps, no Garmin Client available!")
-            return False
+            return []
 
         value = 0
         try:
@@ -173,10 +187,10 @@ class activity_monitor():
             GarminConnectTooManyRequestsError,
         ) as err:
             self.debug("[ERROR] Error occurred during Garmin Connect Client get steps data: %s" % err)
-            return False
+            return []
         except Exception:  # pylint: disable=broad-except
             self.debug("[ERROR] Unknown error occurred during Garmin Connect Client get steps data")
-            return False
+            return []
         
         if value >= int(required_value):
             msg = 'Value in Garmin Connect for {} was {}, which is greater than the required {}! Enabling your device ({})!'.format(stat, value, required_value, profile["name"])
@@ -210,14 +224,14 @@ class activity_monitor():
 
     def check_activity(self, profile):
         events = database.get_active_user_events(profile['name'])
-        block_found = False
-        for event in events:
-            res = self.process_command(event, profile)
-            if res:
-                block_found = True
         
-        database.update_profile_stats(profile["name"], block_found, datetime.now())
-        return block_found
+        disabled_mac = []
+        for event in events:
+            for d in self.process_command(event, profile):
+                disabled_mac.append(d)
+        
+        database.update_profile_stats(profile["name"], len(disabled_mac) > 0, datetime.now())
+        return disabled_mac
         
     def init_garmin_client(self, profile):
         if "garmin_username" not in profile or "garmin_password" not in profile:
@@ -279,8 +293,10 @@ class activity_monitor():
                 self.debug("[INFO] Processing activity for Users Now...")
                 found_disabled_profiles = []
                 for profile in database.get_profiles():
-                    if self.check_activity(profile):
-                        found_disabled_profiles.append(profile['name'])
+                    disabled_mac =self.check_activity(profile)
+                    if len(disabled_mac) > 0:
+                        for m in disabled_mac:
+                            found_disabled_profiles.append(m)
 
                 self.debug("[INFO] Sleeping 30 seconds before processing networks to allow...")
                 time.sleep(30)

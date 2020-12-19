@@ -4,8 +4,8 @@ const app = express();
 const MongoClient = require('mongodb').MongoClient
 
 var moment = require('moment');
-//const connectionString = "mongodb://"+process.env.MONGO_HOST+":27017"
-const connectionString = "mongodb://192.168.1.17:27017"
+const connectionString = "mongodb://"+process.env.MONGO_HOST+":27017"
+//const connectionString = "mongodb://192.168.1.17:27017"
 
 var ObjectID            = require('mongodb').ObjectID;
 
@@ -40,57 +40,45 @@ MongoClient.connect(connectionString, {
         .then(profiles => {
             db.collection('all_devices').find().toArray()
             .then(devices => {
-                db.collection('disabled_devices').find().toArray()
-                .then(disabled => {
-                    db.collection('events').find().toArray()
-                    .then(events => {
-                        disabled.forEach(device => {
+                db.collection('events').find().toArray()
+                .then(events => {
+                    events.forEach(event => {
+                        console.log(event)
+
+                        var name_of_day = getWeekDay();
+
+                        var today = new Date();
+                        var start = new Date('1/1/2020 '+event.start_time).getTime()
+                        var end = new Date('1/1/2020 '+event.end_time).getTime()
+                        var now = new Date('1/1/2020 '+today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds()).getTime()
+
+                        if((event.days.indexOf(name_of_day) > -1) && now > start && now < end) {
                             profiles.forEach(profile => {
-                                if(device.name == profile.name) {
-                                    profile.disabled = true
+                                if(event.user == profile.name) {
+                                    if(!profile.active_events) {
+                                        profile.active_events = [event]       
+                                    } else {
+                                        profile.active_events.push(event)
+                                    }
                                 }
                             })
-                        })
-
-                        events.forEach(event => {
-                            console.log(event)
-
-                            var name_of_day = getWeekDay();
-
-                            var today = new Date();
-                            var start = new Date('1/1/2020 '+event.start_time).getTime()
-                            var end = new Date('1/1/2020 '+event.end_time).getTime()
-                            var now = new Date('1/1/2020 '+today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds()).getTime()
-
-                            if((event.days.indexOf(name_of_day) > -1) && now > start && now < end) {
-                                profiles.forEach(profile => {
-                                    if(event.user == profile.name) {
-                                        if(!profile.active_events) {
-                                            profile.active_events = [event]       
-                                        } else {
-                                            profile.active_events.push(event)
-                                        }
+                        } else {
+                            profiles.forEach(profile => {
+                                if(event.user == profile.name) {
+                                    if(!profile.upcoming_events) {
+                                        profile.upcoming_events = [event]       
+                                    } else {
+                                        profile.upcoming_events.push(event)
                                     }
-                                })
-                            } else {
-                                profiles.forEach(profile => {
-                                    if(event.user == profile.name) {
-                                        if(!profile.upcoming_events) {
-                                            profile.upcoming_events = [event]       
-                                        } else {
-                                            profile.upcoming_events.push(event)
-                                        }
-                                    }
-                                })
-                            }
-                        })
+                                }
+                            })
+                        }
+                    })
 
-                        res.render('index.ejs', { 
-                            profiles: profiles,
-                            devices: devices,
-                            disabled_devices: disabled,
-                            moment: moment,
-                        })
+                    res.render('index.ejs', { 
+                        profiles: profiles,
+                        devices: devices,
+                        moment: moment,
                     })
                 })
             })

@@ -76,7 +76,7 @@ docker run -d \
 --restart unless-stopped \
 -e MONGO_HOST=rpi3-mongodb3 \
 --network internal-activ8-network \
-activ8/backend:0.0.3
+activ8/backend:0.0.9
 ```
 
 # Start Frontend
@@ -87,7 +87,7 @@ docker run -d \
 --network internal-activ8-network \
 -e MONGO_HOST=rpi3-mongodb3 \
 -p 80:80 \
-activ8/frontend:0.0.3
+activ8/frontend:0.0.9.1
 ```
 
 4. You're done!
